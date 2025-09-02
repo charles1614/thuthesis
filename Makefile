@@ -1,7 +1,7 @@
 # Makefile for ThuThesis
 
 PACKAGE = thuthesis
-THESIS  = thuthesis-example
+THESIS  = postdoc-thesis
 SPINE   = spine
 
 SOURCES = $(PACKAGE).ins $(PACKAGE).dtx
@@ -37,6 +37,7 @@ $(PACKAGE).pdf: cls FORCE_MAKE
 
 $(THESIS).pdf: cls FORCE_MAKE
 	$(LATEXMK) $(THESIS)
+	cp build/$(THESIS).pdf .
 
 viewdoc: doc
 	$(LATEXMK) -pv $(PACKAGE).dtx

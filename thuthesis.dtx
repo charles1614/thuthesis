@@ -4257,6 +4257,24 @@
     default = {二级学科名称},
     name    = discipline@level@ii,
   },
+  enterprise-department = {
+    name = postdoc@enterprise@department,
+  },
+  enterprise-mentor = {
+    name = postdoc@enterprise@supervisor,
+  },
+  station-mentor = {
+    name = postdoc@station@supervisor,
+  },
+  workstation-name = {
+    name = postdoc@workstation,
+  },
+  postdoc-station = {
+    name = postdoc@station,
+  },
+  submission-date = {
+    name = postdoc@submit@date,
+  },
   start-date = {
     name    = start@date,
     default = {\the\year-\two@digits{\month}-\two@digits{\day}},
@@ -4369,8 +4387,11 @@
   \stepcounter{thu@csl@count}%
 }
 \newcommand\thu@name@title@format[2]{%
-  \thu@pad{3cm}{\thu@stretch{4em}{#1}}%
-  \thu@stretch{3em}{#2}%
+  \thu@pad{1em}{#1}% Use small padding for name to prevent stretching while allowing more natural width
+  \ifx#2\@empty\else
+    \hspace{0.5em}% Appropriate space between name and title only when title exists
+    #2% Use natural width for title
+  \fi
 }
 \newcommand\thu@name@title[1]{%
   \setcounter{thu@csl@count}{0}%
@@ -4849,10 +4870,12 @@
       编号\thu@underline[3.7cm]{\thu@id}\par
     }%
     \vskip 3.15cm%
-    {\sffamily\bfseries\xiaoer[2.6]%
-      {\ziju{1.5}清华大学\par}%
+    {\centering\sffamily\bfseries\xiaoer[1.6]%
+      {\ziju{0.03}比亚迪汽车工业有限公司\\中国科学院深圳先进技术研究院\par}%
+    \par}%
+    {\centering\sffamily\bfseries\xiaoer[2.6]%
       {\ziju{0.5}博士后研究工作报告\par}%
-    }%
+    \par}%
     \vskip 0.2cm%
     \parbox[t][4.0cm][c]{\textwidth}{%
       \centering\sihao[3.46]%
@@ -4860,10 +4883,15 @@
       \expandafter\uline\expandafter{\thu@title}\par
     }\par
     \vskip 0.4cm%
-    {\xiaosi\thu@author\par}%
-    \vskip 1.4cm%
+    {\xiaosi\thu@uline[6em]{\thu@author}\par}%
+    \vskip 0.2cm%
+    \ifx\thu@postdoc@enterprise@department\@empty\else
+      {\xiaosi[1.58]\thu@postdoc@enterprise@department\par}%
+      \vskip 0.2cm%
+    \fi
+    \vskip 1.2cm%
     {\xiaosi[1.58]%
-      \renewcommand\ULdepth{0.9em}%
+      \renewcommand\ULdepth{0.5em}%
       工作完成日期\quad
       \thu@uline[5.9cm]{%
         \thu@format@date{\thu@date@zh@digit@short}{\thu@start@date}—%
@@ -4873,9 +4901,9 @@
       报告提交日期\quad
       \thu@uline[5.9cm]{\thu@format@date{\thu@date@zh@digit@short}{\thu@date}}\par
     }%
-    \vskip 0.45cm%
-    {\xiaosi[2]{\ziju{1}清华大学}\quad （北京）\par}%
-    \vskip 0.25cm%
+    \vskip 1.25cm%
+    {\xiaosi[1.6]{\ziju{0.03}比亚迪汽车工业有限公司\\中国科学院深圳先进技术研究院}\par}%
+    \vskip 0.15cm%
     {\xiaosi[2]\thu@format@date{\thu@date@zh@digit@short}{\thu@date}\par}%
   \end{center}%
 }
@@ -4898,21 +4926,25 @@
     {\xiaosi[2.6]%
       \begin{tabular}{l@{\quad}l}%
         \renewcommand\arraystretch{1}%
-        \thu@stretch{11em}{博士后姓名}                  & \thu@author           \\
-        \thu@stretch{11em}{流动站（一级学科）名称}      & \thu@discipline@level@i  \\
-        \thu@stretch{11em}{专\quad{}业（二级学科）名称} & \thu@discipline@level@ii \\
+        博士后姓名：                  & \thu@uline[14em]{\thu@author}           \\
+        企业导师：                  & \thu@uline[14em]{\thu@name@title{\thu@postdoc@enterprise@supervisor}}           \\
+        流动站导师：                  & \thu@uline[14em]{\thu@name@title{\thu@postdoc@station@supervisor}}           \\
+        流动站（一级学科）名称：      & \thu@uline[14em]{\thu@discipline@level@i}  \\
+        专\quad{}业（二级学科）名称： & \thu@uline[14em]{\thu@discipline@level@ii} \\
+        研究工作起始时间： & \thu@uline[14em]{\thu@format@date{\thu@date@zh@digit}{\thu@start@date}} \\
+        研究工作期满时间： & \thu@uline[14em]{\thu@format@date{\thu@date@zh@digit}{\thu@end@date}} \\
       \end{tabular}\par
     }%
-    \vskip 2.7cm%
-    {\xiaosi[2.6]%
-      研究工作起始时间\quad\thu@format@date{\thu@date@zh@digit}{\thu@start@date}\par
-      \vskip 0.1cm%
-      研究工作期满时间\quad\thu@format@date{\thu@date@zh@digit}{\thu@end@date}\par
-    }%
     \vskip 2.1cm%
-    {\xiaosi[2.6]清华大学人事处（北京）\par}%
+    {\xiaosi[2.6]%
+      \begin{tabular}{l@{\quad}l}%
+        \renewcommand\arraystretch{1}%
+        工作站/创新基地名称：                  & \thu@uline[14em]{\thu@postdoc@workstation}           \\
+        流动站名称：                  & \thu@uline[14em]{\thu@postdoc@station}           \\
+        报告提交日期：                  & \thu@uline[14em]{\thu@postdoc@submit@date}           \\
+      \end{tabular}\par
+    }%
     \vskip 0.6cm%
-    {\wuhao\thu@format@date{\thu@date@zh@digit@short}{\thu@date}\par}%
   \end{center}%
 }
 %    \end{macrocode}

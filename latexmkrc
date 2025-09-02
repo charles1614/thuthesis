@@ -1,5 +1,8 @@
 # vim: set ft=perl:
 
+# Set output directory for auxiliary files
+$out_dir = "build";
+
 $pdf_mode = 5;
 
 $xelatex = "xelatex -shell-escape -file-line-error -halt-on-error -interaction=nonstopmode -no-pdf -synctex=1 %O %S";
@@ -14,6 +17,6 @@ $makeindex = "makeindex -s gind.ist %O -o %D %S";
 
 add_cus_dep('nlo', 'nls', 0, 'nlo2nls');
 sub nlo2nls {
-    system("makeindex -s nomencl.ist -o \"$_[0].nls\" \"$_[0].nlo\"");
+    system("makeindex -s nomencl.ist -o \"$out_dir/$_[0].nls\" \"$out_dir/$_[0].nlo\"");
 }
 push @generated_exts, 'nlo', 'nls';
