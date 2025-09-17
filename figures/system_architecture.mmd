@@ -1,0 +1,54 @@
+graph TB
+    subgraph DataLayer["Data Processing Layer"]
+        A["Waymo Open Dataset<br/>(TFRecord Format)"] --> B["waymo_converter.py<br/>Format Conversion"]
+        B --> C["LiDAR Point Cloud<br/>Extraction & Colorization"]
+        C --> D["Camera Calibration<br/>& Trajectory Parsing"]
+        D --> E["Geometric Condition<br/>Rendering Pipeline"]
+    end
+    
+    subgraph DiffusionLayer["Video Diffusion Model Layer"]
+        E --> F["VideoDiffusionModel<br/>High-level Interface"]
+        F --> G["DiffusionEngine<br/>Core Training Engine"]
+        G --> H["3D UNet Backbone<br/>Spatiotemporal Processing"]
+        H --> I["Condition Encoder<br/>LiDAR-RGB-D Integration"]
+        I --> J["Denoising Sampler<br/>Controllable Generation"]
+    end
+    
+    subgraph GaussianLayer["4D Gaussian Splatting Layer"]
+        K["StreetGaussianModel<br/>Unified Scene Manager"] --> L["GaussianModelBkgd<br/>Static Background"]
+        K --> M["GaussianModelActor<br/>Dynamic Objects"]
+        K --> N["GaussianModelSky<br/>Sky Representation"]
+        L --> O["Background Gaussians<br/>𝒢_bkgd"]
+        M --> P["Actor Gaussians<br/>𝒢_obj^(i)"]
+        N --> Q["Sky Cubemap<br/>Environment Mapping"]
+    end
+    
+    subgraph RenderLayer["Differentiable Rendering Engine"]
+        O --> R["StreetGaussianRenderer<br/>Multi-modal Renderer"]
+        P --> R
+        Q --> R
+        R --> S["render_all()<br/>Complete Scene"]
+        R --> T["render_background()<br/>Static Components"]
+        R --> U["render_object()<br/>Dynamic Components"]
+    end
+    
+    subgraph DistillationLayer["Knowledge Distillation Framework"]
+        J --> V["DiffusionRunner<br/>Sampling Interface"]
+        S --> V
+        V --> W["Pseudo Ground Truth<br/>Generation"]
+        W --> X["Hybrid Loss<br/>Computation"]
+        X --> Y["Gradient Backpropagation<br/>& Parameter Update"]
+        Y --> K
+    end
+    
+    classDef dataStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000000
+    classDef diffusionStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000000
+    classDef gaussianStyle fill:#E8F5E8,stroke:#388E3C,stroke-width:2px,color:#000000
+    classDef renderStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000000
+    classDef distillStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000000
+    
+    class A,B,C,D,E dataStyle
+    class F,G,H,I,J diffusionStyle
+    class K,L,M,N,O,P,Q gaussianStyle
+    class R,S,T,U renderStyle
+    class V,W,X,Y distillStyle

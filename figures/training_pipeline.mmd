@@ -1,0 +1,33 @@
+sequenceDiagram
+    participant DL as DataLoader<br/>Camera & Conditions
+    participant GS as 4D Gaussian Model<br/>StreetGaussianModel
+    participant RN as Renderer<br/>StreetGaussianRenderer
+    participant VD as Video Diffusion<br/>DiffusionEngine
+    participant OP as Optimizer<br/>Adam/AdamW
+    
+    Note over DL,OP: Training Iteration Loop
+    
+    DL->>+GS: Load viewpoint camera & geometric conditions
+    GS->>+RN: Current 4DGS parameters θ_t
+    RN->>RN: Render current viewpoint I_render = R(θ_t, π)
+    RN->>-GS: Return rendering results
+    
+    alt Training Viewpoint (π ∈ V_train)
+        GS->>OP: Compute reconstruction loss L_recon
+        Note right of OP: L_recon = L_L1 + λ_ssim L_SSIM + λ_lpips L_LPIPS
+    else Novel Viewpoint (π ∉ V_train)
+        RN->>+VD: Current render as training-free guidance
+        VD->>VD: Generate pseudo GT: I_pseudo = D_φ(z_T, C_novel)
+        VD->>-OP: Pseudo ground truth supervision
+        OP->>OP: Compute distillation loss L_novel
+        Note right of OP: L_novel = ||I_render - I_pseudo||_1 + λ(1 - SSIM)
+    end
+    
+    OP->>GS: Update Gaussian parameters: θ_{t+1} = θ_t - η∇L
+    
+    alt Densification Condition (iter < densify_until_iter)
+        GS->>GS: Adaptive densification & pruning
+        Note right of GS: Split: ||∇_μ L|| > τ_grad ∧ max(s) > τ_scale<br/>Clone: ||∇_μ L|| > τ_grad ∧ max(s) ≤ τ_scale<br/>Prune: α < τ_opacity
+    end
+    
+    Note over DL,OP: Continue until convergence

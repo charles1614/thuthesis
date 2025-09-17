@@ -1,76 +1,266 @@
 % !TeX root = ../thuthesis-example.tex
 
-\chapter{引用文献的标注}
+\chapter{系统架构设计与高性能实现}
 
-模板支持 BibTeX 和 BibLaTeX 两种方式处理参考文献。
-下文主要介绍 BibTeX 配合 \pkg{natbib} 宏包的主要使用方法。
+本章详细阐述了StreetCrafter系统的架构设计原理和关键技术实现。我们从软件工程和系统优化的角度，分析了大规模4D场景重建系统的设计挑战，提出了分层解耦的架构方案，并针对GPU内存限制、计算效率和数值稳定性等关键问题，设计了一系列创新的技术解决方案。
 
+\section{系统架构设计原理}
 
-\section{顺序编码制}
+\subsection{分层解耦架构的设计理念}
 
-在顺序编码制下，默认的 \cs{cite} 命令同 \cs{citep} 一样，序号置于方括号中，
-引文页码会放在括号外。
-统一处引用的连续序号会自动用短横线连接。
+针对4D高斯溅射与视频扩散模型融合的复杂性，我们提出了一种五层解耦架构，每层承担明确的职责并通过标准化接口进行交互。这种设计的核心优势在于：（1）降低系统复杂度，提高可维护性；（2）支持组件级别的独立优化和测试；（3）便于不同算法模块的替换和扩展。
 
-\thusetup{
-  cite-style = super,
-}
-\noindent
-\begin{tabular}{l@{\quad$\Rightarrow$\quad}l}
-  \verb|\cite{zhangkun1994}|               & \cite{zhangkun1994}               \\
-  \verb|\citet{zhangkun1994}|              & \citet{zhangkun1994}              \\
-  \verb|\citep{zhangkun1994}|              & \citep{zhangkun1994}              \\
-  \verb|\cite[42]{zhangkun1994}|           & \cite[42]{zhangkun1994}           \\
-  \verb|\cite{zhangkun1994,zhukezhen1973}| & \cite{zhangkun1994,zhukezhen1973} \\
-\end{tabular}
+\textbf{数据抽象层}实现了对异构数据源的统一抽象，采用适配器模式屏蔽不同数据集格式的差异。\textbf{几何表示层}负责4D高斯溅射的核心数据结构管理，采用组合模式统一处理静态背景、动态物体和环境表示。\textbf{神经渲染层}实现了可微分高斯光栅化引擎，采用策略模式支持多种渲染后端。\textbf{扩散推理层}封装了视频扩散模型的推理逻辑，实现了内存高效的长序列采样算法。\textbf{知识蒸馏层}协调扩散模型和4DGS的联合优化，实现了自适应的知识迁移算法。
 
+\subsection{模块间通信的接口设计}
 
-也可以取消上标格式，将数字序号作为文字的一部分。
-建议全文统一使用相同的格式。
+为了确保各层之间的松耦合，我们设计了标准化的接口协议。\textbf{数据传输接口}定义了Camera、PointCloud、Trajectory等核心数据结构，确保数据在不同模块间的一致性传递。\textbf{渲染接口}抽象了渲染操作的核心接口，支持不同渲染后端的透明切换。\textbf{优化接口}定义了统一的参数更新和梯度传播接口，支持不同优化器和学习率调度策略的灵活配置。
 
-\thusetup{
-  cite-style = inline,
-}
-\noindent
-\begin{tabular}{l@{\quad$\Rightarrow$\quad}l}
-  \verb|\cite{zhangkun1994}|               & \cite{zhangkun1994}               \\
-  \verb|\citet{zhangkun1994}|              & \citet{zhangkun1994}              \\
-  \verb|\citep{zhangkun1994}|              & \citep{zhangkun1994}              \\
-  \verb|\cite[42]{zhangkun1994}|           & \cite[42]{zhangkun1994}           \\
-  \verb|\cite{zhangkun1994,zhukezhen1973}| & \cite{zhangkun1994,zhukezhen1973} \\
-\end{tabular}
+\section{高性能渲染引擎的架构创新}
 
+\subsection{多模态渲染管线的设计}
 
+我们设计了一种多模态渲染管线，能够同时处理静态背景、动态物体和环境映射三种不同类型的几何表示。该设计的核心创新在于组件化渲染策略，将复杂的场景渲染分解为多个独立的渲染通道。
 
-\section{著者-出版年制}
+数学上，我们将渲染过程建模为一个可配置的组合函数：
 
-著者-出版年制下的 \cs{cite} 跟 \cs{citet} 一样。
+\begin{equation}
+\mathcal{R}_{\text{total}}(\pi, \mathcal{G}) = \mathcal{C}(\mathcal{R}_{\text{bkgd}}(\pi, \mathcal{G}_{\text{bkgd}}), \mathcal{R}_{\text{obj}}(\pi, \mathcal{G}_{\text{obj}}), \mathcal{R}_{\text{sky}}(\pi, \mathcal{G}_{\text{sky}}))
+\label{eq:modular_rendering}
+\end{equation}
 
-\thusetup{
-  cite-style = author-year,
-}
-\noindent
-\begin{tabular}{@{}l@{$\Rightarrow$}l@{}}
-  \verb|\cite{zhangkun1994}|                & \cite{zhangkun1994}                \\
-  \verb|\citet{zhangkun1994}|               & \citet{zhangkun1994}               \\
-  \verb|\citep{zhangkun1994}|               & \citep{zhangkun1994}               \\
-  \verb|\cite[42]{zhangkun1994}|            & \cite[42]{zhangkun1994}            \\
-  \verb|\citep{zhangkun1994,zhukezhen1973}| & \citep{zhangkun1994,zhukezhen1973} \\
-\end{tabular}
+其中$\mathcal{C}$是可配置的组合函数，支持不同的混合策略和后处理操作。
 
-\vskip 2ex
-\thusetup{
-  cite-style = super,
-}
-注意，引文参考文献的每条都要在正文中标注
-\cite{zhangkun1994,zhukezhen1973,dupont1974bone,zhengkaiqing1987,%
-  jiangxizhou1980,jianduju1994,merkt1995rotational,mellinger1996laser,%
-  bixon1996dynamics,mahui1995,carlson1981two,taylor1983scanning,%
-  taylor1981study,shimizu1983laser,atkinson1982experimental,%
-  kusch1975perturbations,guangxi1993,huosini1989guwu,wangfuzhi1865songlun,%
-  zhaoyaodong1998xinshidai,biaozhunhua2002tushu,chubanzhuanye2004,%
-  who1970factors,peebles2001probability,baishunong1998zhiwu,%
-  weinstein1974pathogenic,hanjiren1985lun,dizhi1936dizhi,%
-  tushuguan1957tushuguanxue,aaas1883science,fugang2000fengsha,%
-  xiaoyu2001chubanye,oclc2000about,scitor2000project%
-}。
+\subsection{GPU加速的光栅化优化}
+
+针对4D高斯溅射的计算特点，我们设计了多项GPU加速优化策略：
+
+\textbf{瓦片化渲染}将图像分割为$16 \times 16$的瓦片，每个瓦片独立处理，充分利用GPU的并行计算能力。\textbf{自适应排序优化}设计了基于深度和不透明度的自适应排序算法，减少不必要的计算开销。\textbf{内存池管理}实现了GPU内存池管理机制，预分配内存块并重复使用。
+
+内存池的大小根据场景复杂度动态调整：
+
+\begin{equation}
+M_{\text{pool}} = \alpha \cdot N_g \cdot D_{\text{gaussian}} + \beta \cdot H \cdot W \cdot C + M_{\text{buffer}}
+\label{eq:memory_pool_sizing}
+\end{equation}
+
+其中$\alpha$和$\beta$是经验系数，$M_{\text{buffer}}$是安全缓冲区大小。
+
+\section{知识蒸馏的算法创新}
+
+\subsection{自适应采样调度算法}
+
+我们提出了一种自适应的扩散采样调度算法，根据4DGS模型的训练状态动态调整采样频率和引导强度。该算法的核心思想是在训练早期提供强引导以建立正确的几何结构，在训练后期减弱引导以保持模型的自主学习能力。
+
+\textbf{动态采样频率调整：}
+
+\begin{equation}
+f_{\text{sample}}(k) = f_{\text{base}} \cdot \exp\left(-\frac{(k - k_{\text{peak}})^2}{2\sigma_{\text{schedule}}^2}\right)
+\label{eq:adaptive_sampling_frequency}
+\end{equation}
+
+\textbf{渐进式引导强度衰减：}
+
+\begin{equation}
+s(k) = s_{\max} \cdot \left(\frac{k_{\max} - k}{k_{\max} - k_{\min}}\right)^\gamma + s_{\min}
+\label{eq:progressive_guidance_decay}
+\end{equation}
+
+其中$\gamma > 0$是衰减指数，控制引导强度的衰减曲线形状。
+
+\subsection{训练自由引导的理论基础}
+
+我们提出的训练自由引导机制具有坚实的理论基础。该机制可以理解为一种自适应的正则化策略，通过引入当前模型状态作为额外的先验信息，防止知识蒸馏过程中的模式崩溃。
+
+从信息论的角度，训练自由引导可以表示为：
+
+\begin{equation}
+\mathcal{H}(\mathbf{I}_{\text{pseudo}}|\mathbf{C}_{\text{geom}}, \mathbf{I}_{\text{render}}) < \mathcal{H}(\mathbf{I}_{\text{pseudo}}|\mathbf{C}_{\text{geom}})
+\label{eq:information_theoretic_guidance}
+\end{equation}
+
+这表明，加入当前渲染结果作为引导能够降低生成图像的条件熵，提高生成的确定性和一致性。
+
+\section{内存优化与计算加速}
+
+\subsection{分层内存管理策略}
+
+针对4DGS和视频扩散模型的巨大内存需求，我们设计了分层内存管理策略：
+
+\textbf{参数内存优化}采用混合精度存储策略，对不同类型的参数使用不同的数值精度。\textbf{中间激活管理}实现了智能的激活值缓存策略。\textbf{梯度检查点优化}针对深度神经网络的反向传播，实现了选择性梯度检查点策略：
+
+\begin{equation}
+\text{UseCheckpoint}(l) = \begin{cases}
+\text{True}, & \text{if } \frac{M_l}{C_l} > \tau_{\text{checkpoint}} \\
+\text{False}, & \text{otherwise}
+\end{cases}
+\label{eq:selective_checkpointing}
+\end{equation}
+
+其中$M_l$是第$l$层的内存占用，$C_l$是计算复杂度。
+
+\subsection{并行计算的架构优化}
+
+\textbf{异步计算流水线}设计了异步计算流水线，将扩散采样、4DGS渲染、梯度计算等操作进行流水线化处理：
+
+\begin{equation}
+T_{\text{total}} = \max(T_{\text{diffusion}}, T_{\text{4dgs}}) + T_{\text{sync}}
+\label{eq:pipeline_timing}
+\end{equation}
+
+其中$T_{\text{sync}}$是同步开销，通过优化可以显著小于串行执行时间。
+
+\section{数值稳定性与收敛性保证}
+
+\subsection{多尺度数值稳定性设计}
+
+4D高斯溅射涉及多个数量级的数值计算，我们设计了多尺度数值稳定性保证机制：
+
+\textbf{自适应梯度裁剪}：
+
+\begin{equation}
+\tau_{\text{clip}}(k) = \mu_{\text{grad}}(k) + \sigma_{\text{clip}} \cdot \sigma_{\text{grad}}(k)
+\label{eq:adaptive_gradient_clipping}
+\end{equation}
+
+\textbf{参数约束与投影}：
+
+\begin{align}
+\boldsymbol{\mu}' &= \text{Proj}_{\mathcal{B}_{\text{scene}}}(\boldsymbol{\mu}) \\
+\mathbf{s}' &= \text{Proj}_{[s_{\min}, s_{\max}]}(\mathbf{s}) \\
+\alpha' &= \text{Proj}_{[\alpha_{\min}, \alpha_{\max}]}(\alpha)
+\label{eq:parameter_projection}
+\end{align}
+
+\subsection{训练收敛性的工程保证}
+
+\textbf{损失函数的权重平衡}通过动态权重调整机制，自动平衡不同损失项的贡献：
+
+\begin{equation}
+\lambda_i(k) = \lambda_i^{\text{init}} \cdot \frac{\|\nabla \mathcal{L}_{\text{ref}}\|}{\|\nabla \mathcal{L}_i\| + \epsilon}
+\label{eq:adaptive_loss_weighting}
+\end{equation}
+
+\section{自适应密化的算法优化}
+
+\subsection{多准则密化决策算法}
+
+我们提出了一种多准则密化决策算法，综合考虑梯度统计、几何特征和时间一致性：
+
+\textbf{梯度统计的时间聚合：}
+
+\begin{equation}
+\mathbf{g}_i^{\text{agg}}(k) = \frac{\sum_{t=k-\Delta k}^{k} \mathbf{1}_{\text{visible}}(i, t) \cdot \nabla_{\boldsymbol{\mu}_i} \mathcal{L}(t)}{\sum_{t=k-\Delta k}^{k} \mathbf{1}_{\text{visible}}(i, t)}
+\label{eq:temporal_gradient_aggregation}
+\end{equation}
+
+\textbf{几何特征的多维度分析：}
+
+\begin{align}
+\text{Anisotropy}(i) &= \frac{\max(\mathbf{s}_i)}{\min(\mathbf{s}_i)} \\
+\text{Density}(i) &= \frac{1}{|\mathcal{N}_i|} \sum_{j \in \mathcal{N}_i} \|\boldsymbol{\mu}_i - \boldsymbol{\mu}_j\|^{-1} \\
+\text{Visibility}(i) &= \frac{1}{T} \sum_{t=1}^{T} \mathbf{1}_{\text{visible}}(i, t)
+\label{eq:multi_criteria_analysis}
+\end{align}
+
+\textbf{智能决策融合：}
+
+\begin{equation}
+\text{Score}_{\text{densify}}(i) = w_1 \|\mathbf{g}_i^{\text{agg}}\| + w_2 \text{Anisotropy}(i) + w_3 \text{Density}(i)^{-1}
+\label{eq:densification_score}
+\end{equation}
+
+\section{扩散模型的系统级优化}
+
+\subsection{内存高效的长序列处理}
+
+视频扩散模型处理长序列时面临严重的内存瓶颈。我们提出了一种内存高效的滑动窗口处理框架：
+
+\textbf{重叠窗口的最优配置：}
+
+\begin{align}
+\min_{w,s} \quad & M(w) \\
+\text{s.t.} \quad & Q(w, s) \geq Q_{\min} \\
+& s \leq w \\
+& w, s \in \mathbb{Z}^+
+\label{eq:window_optimization}
+\end{align}
+
+其中$M(w)$是内存占用函数，$Q(w, s)$是生成质量函数。
+
+\textbf{时间权重的优化设计：}
+
+\begin{equation}
+w(t, t_{\text{center}}) = \exp\left(-\frac{(t - t_{\text{center}})^2}{2\sigma_{\text{temporal}}^2}\right)
+\label{eq:temporal_weighting}
+\end{equation}
+
+\section{分布式训练的架构设计}
+
+\subsection{异构并行计算架构}
+
+考虑到扩散模型和4DGS模型的不同计算特性，我们设计了异构并行计算架构：
+
+\textbf{资源感知的任务调度：}
+
+\begin{equation}
+\text{GPU}_{\text{assign}} = \arg\min_g \frac{T_{\text{compute}}(g) \cdot \alpha + M_{\text{memory}}(g) \cdot \beta}{\text{Capacity}(g)}
+\label{eq:resource_aware_scheduling}
+\end{equation}
+
+\textbf{梯度压缩与通信优化：}
+
+\begin{equation}
+\mathbf{g}_{\text{compressed}} = \text{Quantize}(\mathbf{g}, b) + \text{ErrorFeedback}(\mathbf{e}_{k-1})
+\label{eq:gradient_compression}
+\end{equation}
+
+\subsection{负载均衡与容错机制}
+
+实现了基于工作窃取的动态负载均衡算法和检查点恢复机制：
+
+\begin{equation}
+\text{CheckpointInterval} = \arg\min_{\Delta k} \left( \frac{C_{\text{checkpoint}}}{\Delta k} + \lambda_{\text{risk}} \cdot P_{\text{failure}} \cdot \Delta k \cdot C_{\text{recompute}} \right)
+\label{eq:optimal_checkpoint_interval}
+\end{equation}
+
+\section{推理系统的架构设计}
+
+\subsection{多模式推理引擎}
+
+我们设计了统一的多模式推理引擎，支持轨迹重建、新视点外推和扩散生成三种不同的推理模式。该设计采用了策略模式，通过配置参数动态选择推理策略。
+
+\textbf{内存自适应的批处理：}
+
+\begin{equation}
+B_{\text{optimal}} = \left\lfloor \frac{M_{\text{available}} - M_{\text{model}}}{M_{\text{per\_sample}} \cdot (1 + \epsilon_{\text{safety}})} \right\rfloor
+\label{eq:adaptive_batch_size}
+\end{equation}
+
+\subsection{实时渲染的性能优化}
+
+\textbf{LOD策略}实现了基于视点距离的LOD策略：
+
+\begin{equation}
+L_{\text{SH}}(\mathbf{p}, \mathbf{c}) = \min\left(L_{\max}, \left\lfloor L_{\max} \cdot \exp\left(-\frac{\|\mathbf{p} - \mathbf{c}\|}{d_{\text{ref}}}\right) \right\rfloor\right)
+\label{eq:distance_based_lod}
+\end{equation}
+
+\section{质量保证与性能评估}
+
+\subsection{实时质量监控}
+
+实现了训练过程中的实时质量监控系统：
+
+\begin{equation}
+Q_{\text{overall}}(k) = w_1 \text{PSNR}(k) + w_2 \text{SSIM}(k) + w_3 (1 - \text{LPIPS}(k))
+\label{eq:quality_monitoring}
+\end{equation}
+
+当$Q_{\text{overall}}(k)$出现异常波动时，系统自动调整训练参数或触发人工干预。
+
+\section{本章小结}
+
+本章从系统架构和工程实现的角度，详细阐述了StreetCrafter系统的设计原理和关键技术。我们提出的五层解耦架构有效降低了系统复杂度，提高了可维护性和可扩展性。针对GPU内存限制和计算效率的挑战，我们设计了多项创新的优化策略，包括内存高效的滑动窗口处理、自适应的密化决策算法、以及异构并行计算架构。
+
+数值稳定性和收敛性保证机制确保了训练过程的鲁棒性。多模式推理引擎提供了灵活的应用接口，支持不同的评估和部署需求。这些架构设计和技术实现为StreetCrafter在大规模动态场景重建任务上的成功应用奠定了坚实的工程基础。

@@ -1,97 +1,536 @@
 % !TeX root = ../thuthesis-example.tex
 
-\chapter{数学符号和公式}
+\chapter{基于扩散先验的4D高斯溅射增强方法}
 
-\section{数学符号}
+本章详细阐述了StreetCrafter系统的核心方法论。我们的方法旨在通过融合视频扩散模型的强大生成先验，来系统性地解决4D高斯溅射在视点外推任务上的根本性局限。本章首先从系统设计的整体视角介绍方法概览，然后深入各个技术组件的具体设计和实现细节。
 
-中文论文的数学符号默认遵循 GB/T 3102.11—1993《物理科学和技术中使用的数学符号》
-\footnote{原 GB 3102.11—1993，自 2017 年 3 月 23 日起，该标准转为推荐性标准。}。
-该标准参照采纳 ISO 31-11:1992 \footnote{目前已更新为 ISO 80000-2:2019。}，
-但是与 \TeX{} 默认的美国数学学会（AMS）的符号习惯有所区别。
-具体地来说主要有以下差异：
+\section{方法概览与设计理念}
+
+\subsection{整体框架设计}
+
+StreetCrafter的核心设计理念是将强大但计算昂贵的视频扩散模型作为"教师"，将高效但泛化能力有限的4D高斯溅射作为"学生"，通过知识蒸馏实现两者的优势互补。整个框架分为两个主要阶段：
+
+\textbf{阶段1：可控视频扩散模型预训练}
+在大规模驾驶数据上训练一个以LiDAR几何条件为引导的视频扩散模型。该模型学习从稀疏的几何信息（LiDAR点云渲染）生成高质量、时间连贯的驾驶视频。
+
+\textbf{阶段2：4DGS知识蒸馏优化}
+利用预训练的扩散模型为新视点生成高质量的"伪真值"图像，以此作为监督信号指导4DGS模型的训练，从而提升其视点外推能力。
+
+这种设计的核心优势在于：（1）扩散模型提供了强大的视觉先验和生成能力；（2）4DGS保持了实时渲染的效率；（3）知识蒸馏桥接了两者，实现了"鱼与熊掌兼得"。
+
+\subsection{数据流与训练策略概览}
+
+整个训练过程涉及多种类型的数据和处理流程：
+
+\textbf{输入数据类型：}
+\begin{itemize}
+\item \textbf{RGB图像序列}：来自Waymo的5个相机（前、左前、右前、左、右），提供视觉真值
+\item \textbf{LiDAR点云}：64线激光雷达数据，提供几何约束和深度监督
+\item \textbf{物体轨迹}：3D边界框序列，用于动静分离和物体跟踪
+\item \textbf{相机标定}：内外参数，确保几何一致性
+\item \textbf{天空掩码}：通过Grounding DINO + SAM生成，用于天空区域的特殊处理
+\end{itemize}
+
+\textbf{训练数据流程：}
 \begin{enumerate}
-  \item 大写希腊字母默认为斜体，如
-    \begin{equation*}
-      \Gamma \Delta \Theta \Lambda \Xi \Pi \Sigma \Upsilon \Phi \Psi \Omega.
-    \end{equation*}
-    注意有限增量符号 $\increment$ 固定使用正体，模板提供了 \cs{increment} 命令。
-  \item 小于等于号和大于等于号使用倾斜的字形 $\le$、$\ge$。
-  \item 积分号使用正体，比如 $\int$、$\oint$。
-  \item
-    偏微分符号 $\partial$ 使用正体。
-  \item
-    省略号 \cs{dots} 按照中文的习惯固定居中，比如
-    \begin{equation*}
-      1, 2, \dots, n \quad 1 + 2 + \dots + n.
-    \end{equation*}
-  \item
-    实部 $\Re$ 和虚部 $\Im$ 的字体使用罗马体。
+\item \textbf{几何条件生成}：将LiDAR点云投影并渲染为RGB-D条件图像
+\item \textbf{扩散模型预训练}：使用RGB图像和LiDAR条件训练可控视频生成模型
+\item \textbf{新视点轨迹生成}：为训练场景创建虚拟的换道、转弯等新轨迹
+\item \textbf{伪真值生成}：扩散模型基于新轨迹的LiDAR条件生成高质量视频
+\item \textbf{4DGS联合训练}：同时使用真实图像和扩散生成的伪真值训练4DGS
 \end{enumerate}
 
-以上数学符号样式的差异可以在模板中统一设置。
-另外国标还有一些与 AMS 不同的符号使用习惯，需要用户在写作时进行处理：
+\section{LiDAR几何条件的设计与使用}
+
+\subsection{LiDAR数据的多层次利用}
+
+LiDAR数据在我们的系统中发挥了三个关键作用：几何条件生成、深度监督和动静分离。这种多层次利用确保了几何一致性和训练稳定性。
+
+\textbf{几何条件生成：}
+我们将LiDAR点云渲染为像素级的几何条件，为扩散模型提供精确的3D结构约束。具体流程包括：
+
 \begin{enumerate}
-  \item 数学常数和特殊函数名用正体，如
-    \begin{equation*}
-      \uppi = 3.14\dots; \quad
-      \symup{i}^2 = -1; \quad
-      \symup{e} = \lim_{n \to \infty} \left( 1 + \frac{1}{n} \right)^n.
-    \end{equation*}
-  \item 微分号使用正体，比如 $\dif y / \dif x$。
-  \item 向量、矩阵和张量用粗斜体（\cs{symbf}），如 $\symbf{x}$、$\symbf{\Sigma}$、$\symbfsf{T}$。
-  \item 自然对数用 $\ln x$ 不用 $\log x$。
+\item \textbf{点云聚合}：聚合$\pm\Delta t$帧内的LiDAR点云以增加密度
+\item \textbf{点云着色}：通过相机图像为点云添加RGB信息
+\item \textbf{可微分渲染}：将彩色点云渲染为RGB-D条件图像
 \end{enumerate}
 
+数学上，给定时刻$t$的LiDAR点云$\mathcal{P}_t = \{\mathbf{p}_i, \mathbf{c}_i\}_{i=1}^{N_t}$，我们首先进行时间聚合：
 
-英文论文的数学符号使用 \TeX{} 默认的样式。
-如果有必要，也可以通过设置 \verb|math-style| 选择数学符号样式。
-
-关于量和单位推荐使用
-\href{http://mirrors.ctan.org/macros/latex/contrib/siunitx/siunitx.pdf}{\pkg{siunitx}}
-宏包，
-可以方便地处理希腊字母以及数字与单位之间的空白，
-比如：
-\SI{6.4e6}{m}，
-\SI{9}{\micro\meter}，
-\si{kg.m.s^{-1}}，
-\SIrange{10}{20}{\degreeCelsius}。
-
-
-
-\section{数学公式}
-
-数学公式可以使用 \env{equation} 和 \env{equation*} 环境。
-注意数学公式的引用应前后带括号，通常使用 \cs{eqref} 命令，比如式\eqref{eq:example}。
 \begin{equation}
-  \frac{1}{2 \uppi \symup{i}} \int_\gamma f = \sum_{k=1}^m n(\gamma; a_k) \mathscr{R}(f; a_k).
-  \label{eq:example}
+\mathcal{P}_{\text{agg}}(t) = \bigcup_{\tau=t-\Delta t}^{t+\Delta t} \mathcal{T}_{\text{ego}}(\tau \rightarrow t) \circ \mathcal{P}_\tau
+\label{eq:lidar_aggregation}
 \end{equation}
 
-多行公式尽可能在“=”处对齐，推荐使用 \env{align} 环境。
+其中$\mathcal{T}_{\text{ego}}(\tau \rightarrow t)$是自车从时刻$\tau$到$t$的位姿变换。
+
+然后通过可微分点渲染生成条件图像：
+
+\begin{equation}
+\mathbf{C}_{\text{lidar}}(u,v) = \sum_{i: \pi(\mathbf{p}_i) = (u,v)} w_i \cdot [\mathbf{c}_i; d_i; m_i]
+\label{eq:lidar_condition_generation}
+\end{equation}
+
+其中$\pi(\cdot)$是3D到2D的投影函数，$w_i$是可见性权重，$d_i$是归一化深度，$m_i$是有效性掩码。
+
+\textbf{深度监督：}
+LiDAR提供的稀疏深度用于约束4DGS的几何重建：
+
+\begin{equation}
+\mathcal{L}_{\text{depth}} = \frac{1}{|\mathcal{M}_{\text{valid}}|} \sum_{(u,v) \in \mathcal{M}_{\text{valid}}} \rho(D_{\text{render}}(u,v) - D_{\text{lidar}}(u,v))
+\label{eq:depth_supervision}
+\end{equation}
+
+其中$\mathcal{M}_{\text{valid}}$是有效LiDAR深度像素，$\rho(\cdot)$是Huber损失函数。
+
+\subsection{动静分离的LiDAR处理策略}
+
+为了支持动态场景建模，我们对LiDAR点云进行动静分离处理：
+
+\textbf{静态背景点云：}
+通过物体轨迹信息，将不在任何3D边界框内的点云归类为静态背景：
+
+\begin{equation}
+\mathcal{P}_{\text{bkgd}}(t) = \{\mathbf{p}_i \in \mathcal{P}_t : \forall j, \mathbf{p}_i \notin \mathcal{B}_j(t)\}
+\label{eq:background_points}
+\end{equation}
+
+其中$\mathcal{B}_j(t)$是第$j$个物体在时刻$t$的3D边界框。
+
+\textbf{动态物体点云：}
+每个跟踪物体的点云单独处理：
+
+\begin{equation}
+\mathcal{P}_{\text{obj}}^{(j)}(t) = \{\mathbf{p}_i \in \mathcal{P}_t : \mathbf{p}_i \in \mathcal{B}_j(t)\}
+\label{eq:object_points}
+\end{equation}
+
+这种分离策略的优势在于：（1）静态背景可以跨时间聚合，提高密度；（2）动态物体保持时间独立性，避免运动模糊；（3）支持物体级别的编辑和控制。
+
+\section{天空区域的智能处理机制}
+
+\subsection{基于Grounding DINO + SAM的天空分割}
+
+天空区域在自动驾驶场景中具有特殊性：它缺乏明确的几何结构，且在不同视点下变化复杂。我们采用了基于视觉语言模型的智能分割策略：
+
+\textbf{两阶段分割流程：}
+\begin{enumerate}
+\item \textbf{Grounding DINO检测}：使用文本提示"sky"检测天空区域的粗略边界框
+\item \textbf{SAM精细分割}：基于检测框生成精确的像素级天空掩码
+\end{enumerate}
+
+具体实现中，我们使用以下策略确保天空检测的准确性：
+
+\begin{verbatim}
+# Sky detection with spatial constraints
+boxes_mask = boxes_xyxy[:, 1] < 100  # Top 100 pixels only
+valid_boxes = boxes_xyxy[boxes_mask]
+
+# SAM segmentation with box prompts
+sam_predictor.set_image(image_source)
+transformed_boxes = sam_predictor.transform.apply_boxes_torch(valid_boxes, image_source.shape[:2])
+masks, _, _ = sam_predictor.predict_torch(
+    point_coords=None,
+    point_labels=None, 
+    boxes=transformed_boxes,
+    multimask_output=False
+)
+\end{verbatim}
+
+\textbf{天空区域的三种表示策略：}
+
+1. \textbf{高斯天空模型}：使用独立的高斯基元集合表示天空，适用于天空区域较大的场景
+2. \textbf{立方体贴图}：使用环境贴图表示天空，计算效率高但表达能力有限
+3. \textbf{背景集成}：将天空直接集成到背景高斯模型中，适用于天空区域较小的场景
+
+\subsection{天空损失的设计原理}
+
+针对天空区域的特殊性质，我们设计了基于不透明度分布的天空损失：
+
+\begin{equation}
+\mathcal{L}_{\text{sky}} = \mathbb{E}_{(u,v) \in \mathcal{M}_{\text{sky}}} [-\log(1-\alpha(u,v))] + \mathbb{E}_{(u,v) \in \mathcal{M}_{\text{non-sky}}} [H(\alpha(u,v))]
+\label{eq:sky_loss_design}
+\end{equation}
+
+其中$H(\alpha) = -\alpha \log \alpha - (1-\alpha) \log(1-\alpha)$是二元熵函数。这种设计鼓励：
+- 天空区域的低不透明度（$\alpha \rightarrow 0$）
+- 非天空区域的确定性不透明度（$\alpha \rightarrow 0$ 或 $\alpha \rightarrow 1$）
+
+\section{训练流程的系统性设计}
+
+\subsection{分阶段训练策略}
+
+我们的训练策略采用了精心设计的分阶段方法，每个阶段都有明确的目标和数据需求：
+
+\textbf{阶段1：扩散模型预训练（25-30 epochs）}
+
+\textbf{数据需求：}
+\begin{itemize}
+\item RGB视频序列：$\mathbf{X} = \{\mathbf{x}_t\}_{t=1}^{T}$，$T=25$帧
+\item LiDAR条件：$\mathbf{C} = \{\mathbf{c}_t\}_{t=1}^{T}$，RGB-D格式
+\item 相机参数：内外参数用于几何一致性
+\end{itemize}
+
+\textbf{训练目标：}
+\begin{equation}
+\mathcal{L}_{\text{diffusion}} = \mathbb{E}_{t,\epsilon,\mathbf{x}_0,\mathbf{C}} \left[ \|\epsilon - \epsilon_\theta(\sqrt{\bar{\alpha}_t} \mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t} \epsilon, \mathbf{C}, t)\|_2^2 \right]
+\label{eq:diffusion_pretraining}
+\end{equation}
+
+\textbf{关键技术：}
+- 条件丢弃（Condition Dropout）：$p_{\text{drop}} = 0.1$，支持分类器自由引导
+- 时空注意力：确保生成视频的时间连贯性
+- 多尺度训练：支持不同分辨率的生成
+
+\textbf{阶段2：4DGS基础训练（前7000次迭代）}
+
+\textbf{数据需求：}
+\begin{itemize}
+\item 训练视点：$\mathcal{V}_{\text{train}}$，包含相机参数和真实图像
+\item 彩色点云：用于高斯基元初始化
+\item 物体轨迹：用于动静分离
+\item LiDAR深度：用于几何监督
+\end{itemize}
+
+\textbf{训练目标：}
+\begin{equation}
+\mathcal{L}_{\text{base}} = \mathcal{L}_{\text{recon}} + \lambda_{\text{depth}} \mathcal{L}_{\text{depth}} + \lambda_{\text{sky}} \mathcal{L}_{\text{sky}}
+\label{eq:base_training}
+\end{equation}
+
+\textbf{关键操作：}
+- 自适应密化：每100次迭代进行一次，基于梯度和几何特征
+- 球谐函数递增：每1000次迭代增加球谐函数阶数
+- 不透明度重置：每3000次迭代重置低质量高斯基元
+
+\textbf{阶段3：扩散蒸馏训练（7000-30000次迭代）}
+
+\textbf{数据需求：}
+\begin{itemize}
+\item 原始训练数据：继续使用真实图像进行重建训练
+\item 新视点轨迹：虚拟的换道、转弯等轨迹
+\item 扩散生成的伪真值：高质量的新视点监督信号
+\item 天空掩码：用于掩码引导和损失计算
+\end{itemize}
+
+\textbf{训练目标：}
+\begin{equation}
+\mathcal{L}_{\text{distill}} = \mathcal{L}_{\text{recon}} + \lambda_{\text{novel}} \mathcal{L}_{\text{novel}} + \lambda_{\text{reg}} \mathcal{L}_{\text{reg}}
+\label{eq:distillation_training}
+\end{equation}
+
+\textbf{关键策略：}
+- 渐进式采样：在特定迭代点（7000, 12000, 17000, 22000）进行扩散采样
+- 引导强度衰减：从强引导（$s=0.7$）逐渐减弱到弱引导（$s=0.3$）
+- 掩码引导：在15000次迭代后启用，只在渲染质量差的区域应用扩散监督
+
+\subsection{新视点轨迹的生成策略}
+
+为了训练4DGS的视点外推能力，我们需要生成多样化的新视点轨迹。这些轨迹模拟真实驾驶中的各种机动行为：
+
+\textbf{横向平移轨迹}：模拟换道行为
+\begin{equation}
+\mathbf{T}_{\text{lateral}}(t) = \mathbf{T}_{\text{orig}}(t) \cdot \text{Translate}(d_{\text{lateral}} \cdot \mathbf{e}_y, 0, 0)
+\label{eq:lateral_trajectory}
+\end{equation}
+
+\textbf{纵向偏移轨迹}：模拟跟车距离变化
+\begin{equation}
+\mathbf{T}_{\text{longitudinal}}(t) = \mathbf{T}_{\text{orig}}(t) \cdot \text{Translate}(0, d_{\text{longitudinal}}, 0)
+\label{eq:longitudinal_trajectory}
+\end{equation}
+
+\textbf{高度变化轨迹}：模拟不同车辆高度
+\begin{equation}
+\mathbf{T}_{\text{height}}(t) = \mathbf{T}_{\text{orig}}(t) \cdot \text{Translate}(0, 0, d_{\text{height}})
+\label{eq:height_trajectory}
+\end{equation}
+
+这些新轨迹的LiDAR条件通过几何变换自动生成，确保了条件的几何一致性。
+
+\section{可控视频扩散模型的深度设计}
+
+\subsection{条件控制机制的多层次设计}
+
+我们的视频扩散模型采用了多层次的条件控制机制，确保生成内容的几何一致性和视觉质量：
+
+\textbf{像素级几何条件}：LiDAR渲染的RGB-D图像提供逐像素的几何约束
+\textbf{全局场景条件}：相机参数和场景元数据提供全局上下文
+\textbf{时间条件}：帧索引和时间戳确保时间连贯性
+
+条件编码过程可以表示为：
+
 \begin{align}
-  a & = b + c + d + e \\
-    & = f + g
+\mathbf{h}_{\text{pixel}} &= \text{Conv2D}(\mathbf{C}_{\text{lidar}}) \\
+\mathbf{h}_{\text{global}} &= \text{MLP}([\mathbf{K}; \mathbf{T}; t]) \\
+\mathbf{h}_{\text{cond}} &= \text{CrossAttention}(\mathbf{h}_{\text{pixel}}, \mathbf{h}_{\text{global}})
+\label{eq:condition_encoding_multilevel}
 \end{align}
 
+\subsection{时空注意力的创新设计}
 
+为了确保生成视频的时间连贯性，我们设计了分解式时空注意力机制：
 
-\section{数学定理}
+\begin{equation}
+\text{SpatioTemporalAttention}(\mathbf{X}) = \text{TemporalAttention}(\text{SpatialAttention}(\mathbf{X}))
+\label{eq:factorized_attention}
+\end{equation}
 
-定理环境的格式可以使用 \pkg{amsthm} 或者 \pkg{ntheorem} 宏包配置。
-用户在导言区载入这两者之一后，模板会自动配置 \env{theorem}、\env{proof} 等环境。
+这种分解设计的优势：
+- 计算复杂度从$O(T^2H^2W^2)$降低到$O(TH^2W^2 + T^2HW)$
+- 更好地建模空间和时间的不同特性
+- 支持不同分辨率的高效处理
 
-\begin{theorem}[Lindeberg--Lévy 中心极限定理]
-  设随机变量 $X_1, X_2, \dots, X_n$ 独立同分布， 且具有期望 $\mu$ 和有限的方差 $\sigma^2 \ne 0$，
-  记 $\bar{X}_n = \frac{1}{n} \sum_{i+1}^n X_i$，则
-  \begin{equation}
-    \lim_{n \to \infty} P \left(\frac{\sqrt{n} \left( \bar{X}_n - \mu \right)}{\sigma} \le z \right) = \Phi(z),
-  \end{equation}
-  其中 $\Phi(z)$ 是标准正态分布的分布函数。
+\section{训练自由引导的创新机制}
+
+\subsection{双重引导策略}
+
+我们提出的训练自由引导机制是StreetCrafter的核心创新之一。与传统的分类器自由引导不同，我们同时使用几何条件和当前4DGS渲染结果作为引导信号：
+
+\begin{equation}
+\epsilon_{\text{guided}} = \epsilon_{\text{uncond}} + w_{\text{geom}} \cdot (\epsilon_{\text{geom}} - \epsilon_{\text{uncond}}) + w_{\text{render}} \cdot (\epsilon_{\text{render}} - \epsilon_{\text{uncond}})
+\label{eq:dual_guidance}
+\end{equation}
+
+其中：
+- $\epsilon_{\text{geom}}$：基于LiDAR几何条件的噪声预测
+- $\epsilon_{\text{render}}$：基于当前4DGS渲染结果的噪声预测
+- $w_{\text{geom}}, w_{\text{render}}$：自适应调整的引导权重
+
+\textbf{自适应权重调整：}
+\begin{align}
+w_{\text{geom}}(k) &= w_{\text{geom}}^{\text{init}} \cdot (1 + \cos(\pi k / K)) / 2 \\
+w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\text{decay}})
+\label{eq:adaptive_guidance_weights}
+\end{align}
+
+这种设计确保了训练初期的强几何约束和后期的精细调优。
+
+\subsection{掩码引导的精确控制}
+
+在训练后期（>15000次迭代），我们引入掩码引导机制，只在渲染质量较差的区域应用扩散监督：
+
+\begin{equation}
+\mathbf{M}_{\text{guide}}(u,v) = \begin{cases}
+1, & \text{if } \|\mathbf{I}_{\text{render}}(u,v) - \mathbf{I}_{\text{ref}}(u,v)\|_2 > \tau_{\text{error}} \\
+0, & \text{otherwise}
+\end{cases}
+\label{eq:masked_guidance}
+\end{equation}
+
+这种策略的优势：
+- 避免在已经收敛的区域进行不必要的修正
+- 集中计算资源在最需要改进的区域
+- 防止过度拟合扩散模型的生成偏好
+
+\section{4DGS增强优化的系统性方法}
+
+\subsection{多模态损失函数的协同设计}
+
+我们设计了一个综合的多模态损失函数，平衡重建质量、几何一致性和新视点泛化：
+
+\begin{align}
+\mathcal{L}_{\text{total}} &= \mathcal{L}_{\text{recon}} + \lambda_{\text{novel}} \mathcal{L}_{\text{novel}} + \lambda_{\text{depth}} \mathcal{L}_{\text{depth}} \\
+&\quad + \lambda_{\text{scale}} \mathcal{L}_{\text{scale}} + \lambda_{\text{sky}} \mathcal{L}_{\text{sky}} + \lambda_{\text{temporal}} \mathcal{L}_{\text{temporal}}
+\label{eq:comprehensive_loss}
+\end{align}
+
+\textbf{重建损失}：多尺度感知损失组合
+\begin{align}
+\mathcal{L}_{\text{recon}} &= \mathcal{L}_{\text{L1}} + \lambda_{\text{ssim}} \mathcal{L}_{\text{SSIM}} + \lambda_{\text{lpips}} \mathcal{L}_{\text{LPIPS}} \\
+\mathcal{L}_{\text{L1}} &= \|\mathbf{M} \odot (\mathbf{I}_{\text{render}} - \mathbf{I}_{\text{gt}})\|_1 \\
+\mathcal{L}_{\text{SSIM}} &= 1 - \text{SSIM}(\mathbf{I}_{\text{render}}, \mathbf{I}_{\text{gt}}, \mathbf{M}) \\
+\mathcal{L}_{\text{LPIPS}} &= \text{LPIPS}(\mathbf{M} \odot \mathbf{I}_{\text{render}}, \mathbf{M} \odot \mathbf{I}_{\text{gt}})
+\label{eq:reconstruction_loss_detailed}
+\end{align}
+
+\textbf{新视点蒸馏损失}：基于扩散生成的伪真值
+\begin{equation}
+\mathcal{L}_{\text{novel}} = \|\mathbf{M}_{\text{upper}} \odot (\mathbf{I}_{\text{render}}^{\text{novel}} - \mathbf{I}_{\text{pseudo}})\|_1 + \lambda_{\text{novel\_ssim}} (1 - \text{SSIM}(\mathbf{I}_{\text{render}}^{\text{novel}}, \mathbf{I}_{\text{pseudo}}, \mathbf{M}_{\text{upper}}))
+\label{eq:novel_distillation_loss}
+\end{equation}
+
+其中$\mathbf{M}_{\text{upper}}$排除图像上半部分，避免天空区域的不稳定性。
+
+\textbf{时间一致性损失}：确保动态物体的平滑运动
+\begin{equation}
+\mathcal{L}_{\text{temporal}} = \sum_{i=1}^{N_{\text{obj}}} \sum_{t=1}^{T-1} \|\mathbf{T}_i(t+1) - \mathbf{T}_i(t)\|_{\text{SE(3)}}^2
+\label{eq:temporal_consistency}
+\end{equation}
+
+\subsection{自适应密化的智能策略}
+
+传统3DGS的密化策略在动态场景中面临挑战。我们提出了时间感知的自适应密化策略：
+
+\begin{algorithm}
+\caption{时间感知的4D高斯密化算法}
+\label{alg:temporal_aware_densification}
+\begin{algorithmic}[1]
+\REQUIRE 当前高斯集合$\mathcal{G}$，时间窗口$[t-\Delta t, t+\Delta t]$
+\ENSURE 更新后的高斯集合$\mathcal{G}'$
+
+\STATE \textbf{Step 1: 时间聚合梯度统计}
+\FOR{每个高斯基元 $g_i \in \mathcal{G}$}
+    \STATE $\mathbf{g}_i^{\text{temporal}} = \frac{1}{|\mathcal{T}_{\text{visible}}|} \sum_{t \in \mathcal{T}_{\text{visible}}} \nabla_{\boldsymbol{\mu}_i} \mathcal{L}(t)$
+\ENDFOR
+
+\STATE \textbf{Step 2: 几何特征分析}
+\FOR{每个高斯基元 $g_i \in \mathcal{G}$}
+    \STATE 计算最大尺度：$s_{\max,i} = \max(\mathbf{s}_i)$
+    \STATE 计算屏幕投影大小：$r_{\text{screen},i} = \text{ProjectedRadius}(\mathbf{s}_i, \mathbf{T}_{\text{cam}})$
+\ENDFOR
+
+\STATE \textbf{Step 3: 智能密化决策}
+\FOR{每个高斯基元 $g_i \in \mathcal{G}$}
+    \IF{$\|\mathbf{g}_i^{\text{temporal}}\| > \tau_{\text{grad}}$}
+        \IF{$s_{\max,i} > \tau_{\text{scale}}$ AND $r_{\text{screen},i} > \tau_{\text{screen}}$}
+            \STATE 执行分裂：$\boldsymbol{\mu}_{\text{new}} = \boldsymbol{\mu}_i \pm \frac{\mathbf{s}_i}{4}$
+        \ELSE
+            \STATE 执行克隆：$\boldsymbol{\mu}_{\text{new}} = \boldsymbol{\mu}_i + \mathcal{N}(0, \sigma_{\text{clone}}^2)$
+        \ENDIF
+    \ENDIF
+    
+    \IF{$\alpha_i < \tau_{\text{opacity}}$ OR $s_{\max,i} > \tau_{\text{prune}}$ OR $r_{\text{screen},i} > r_{\text{max}}$}
+        \STATE 执行剪枝：$\mathcal{G} \leftarrow \mathcal{G} \setminus \{g_i\}$
+    \ENDIF
+\ENDFOR
+
+\RETURN $\mathcal{G}'$
+\end{algorithmic}
+\end{algorithm}
+
+\section{系统训练的完整数据依赖图}
+
+\subsection{数据流向分析}
+
+整个训练过程的数据依赖关系可以用以下流向图表示：
+
+\textbf{原始数据 → 预处理数据：}
+\begin{itemize}
+\item Waymo TFRecord → RGB图像序列 + LiDAR点云 + 物体轨迹 + 相机标定
+\item RGB图像 + Grounding DINO + SAM → 天空掩码
+\item LiDAR点云 + RGB图像 → 彩色点云
+\item 彩色点云 + 相机参数 → LiDAR条件图像（RGB-D）
+\end{itemize}
+
+\textbf{预处理数据 → 训练数据：}
+\begin{itemize}
+\item RGB序列 + LiDAR条件 → 扩散模型训练对
+\item 彩色点云 + 物体轨迹 → 4DGS初始化
+\item 原始轨迹 + 几何变换 → 新视点轨迹
+\item 新视点轨迹 + LiDAR条件 → 扩散采样输入
+\end{itemize}
+
+\textbf{训练数据 → 监督信号：}
+\begin{itemize}
+\item 真实RGB图像 → 重建损失监督
+\item LiDAR深度 → 几何一致性监督  
+\item 扩散生成图像 → 新视点蒸馏监督
+\item 天空掩码 → 天空区域损失监督
+\end{itemize}
+
+\subsection{训练调度的精确设计}
+
+我们的训练调度采用了精心设计的多阶段策略：
+
+\textbf{迭代0-500：预热阶段}
+- 仅使用重建损失，建立基础几何结构
+- 较低的学习率：$\eta_{\text{pos}} = 1.6 \times 10^{-4}$
+- 禁用密化操作，避免早期不稳定
+
+\textbf{迭代500-7000：基础训练阶段}  
+- 启用完整的重建损失和正则化项
+- 自适应密化：每100次迭代
+- 球谐函数递增：每1000次迭代从0阶增加到3阶
+
+\textbf{迭代7000+：扩散蒸馏阶段}
+- 在特定迭代点进行扩散采样：$\{7000, 12000, 17000, 22000\}$
+- 渐进式引导强度：$s \in \{0.7, 0.5, 0.3, 0.1\}$
+- 新视点采样概率：$p_{\text{novel}} = 0.1$
+
+\textbf{迭代15000+：掩码引导阶段}
+- 启用掩码引导，精细化训练
+- 降低密化频率，稳定几何结构
+- 引入时间一致性约束
+
+\section{多模态正则化的协同设计}
+
+\subsection{几何一致性约束}
+
+\textbf{LiDAR深度约束}：
+利用LiDAR提供的稀疏但准确的深度信息约束4DGS的几何重建：
+
+\begin{equation}
+\mathcal{L}_{\text{depth}} = \frac{1}{|\mathcal{M}_{\text{lidar}}|} \sum_{(u,v) \in \mathcal{M}_{\text{lidar}}} \text{SmoothL1}(D_{\text{render}}(u,v), D_{\text{lidar}}(u,v))
+\label{eq:lidar_depth_constraint}
+\end{equation}
+
+\textbf{物体边界约束}：
+确保动态物体的高斯基元不会泄漏到其边界框外：
+
+\begin{equation}
+\mathcal{L}_{\text{bbox}} = \sum_{i=1}^{N_{\text{obj}}} \mathbb{E}_{\mathbf{p} \notin \mathcal{B}_i} [\alpha_i(\mathbf{p})] + \mathbb{E}_{\mathbf{p} \in \mathcal{B}_i} [H(\alpha_i(\mathbf{p}))]
+\label{eq:bbox_constraint}
+\end{equation}
+
+\subsection{尺度和形状正则化}
+
+\textbf{各向异性约束}：
+防止高斯基元退化为过度拉伸的椭球体：
+
+\begin{equation}
+\mathcal{L}_{\text{anisotropy}} = \mathbb{E}_{g \in \mathcal{G}} \left[ \frac{\max(\mathbf{s}_g)}{\min(\mathbf{s}_g)} - 1 \right]^2
+\label{eq:anisotropy_regularization}
+\end{equation}
+
+\textbf{紧凑性约束}：
+鼓励高斯基元保持紧凑的形状：
+
+\begin{equation}
+\mathcal{L}_{\text{compact}} = \mathbb{E}_{g \in \mathcal{G}} \left[ \|\mathbf{s}_g\|_2^2 \right]
+\label{eq:compactness_regularization}
+\end{equation}
+
+\section{理论分析与性能保证}
+
+\subsection{收敛性的理论保证}
+
+\begin{theorem}[多模态损失收敛性]
+在以下条件下：
+\begin{enumerate}
+\item 扩散模型生成质量有界：$\mathbb{E}[\|\mathcal{D}_\phi(\mathbf{z}, \mathbf{C}) - \mathbf{I}_{\text{true}}\|_2] \leq \epsilon_D$
+\item 4DGS表示能力充分：存在$\mathcal{G}^*$使得表示误差有界
+\item 学习率满足标准条件：$\sum \eta_k = \infty$，$\sum \eta_k^2 < \infty$
+\end{enumerate}
+优化过程几乎必然收敛到$\epsilon_D$-邻域内的最优解：
+\begin{equation}
+\lim_{k \to \infty} \mathbb{E}[\mathcal{L}_{\text{total}}^{(k)}] \leq \mathcal{L}^* + C \cdot \epsilon_D
+\end{equation}
 \end{theorem}
-\begin{proof}
-  Trivial.
-\end{proof}
 
-同时模板还提供了 \env{assumption}、\env{definition}、\env{proposition}、
-\env{lemma}、\env{theorem}、\env{axiom}、\env{corollary}、\env{exercise}、
-\env{example}、\env{remar}、\env{problem}、\env{conjecture} 这些相关的环境。
+\subsection{计算复杂度的全面分析}
+
+\textbf{扩散模型复杂度：}
+- 预训练：$O(E \cdot B \cdot T \cdot K \cdot H \cdot W \cdot D_{\text{model}})$
+- 推理采样：$O(K \cdot T \cdot H \cdot W \cdot D_{\text{model}})$
+
+\textbf{4DGS复杂度：}
+- 渲染：$O(N_g \cdot H \cdot W \cdot \log N_g)$
+- 密化：$O(N_g \cdot D_{\text{gaussian}})$
+- 梯度计算：$O(N_g \cdot H \cdot W)$
+
+\textbf{总体训练复杂度：}
+\begin{equation}
+\mathcal{O}_{\text{total}} = O(I \cdot (N_g \cdot H \cdot W + N_{\text{sample}} \cdot K \cdot T \cdot H \cdot W \cdot D_{\text{model}}))
+\label{eq:total_complexity}
+\end{equation}
+
+其中$I$是总迭代数，$N_{\text{sample}}$是扩散采样频率。
+
+\section{本章小结}
+
+本章从系统设计的整体视角详细阐述了StreetCrafter的核心方法论。我们首先介绍了双阶段知识蒸馏的整体框架和设计理念，然后深入分析了LiDAR几何条件的多层次利用、基于Grounding DINO + SAM的智能天空处理、以及精心设计的分阶段训练策略。
+
+训练自由引导机制是我们的核心创新，通过双重引导和掩码控制实现了精确的知识迁移。多模态损失函数的协同设计确保了重建质量、几何一致性和新视点泛化能力的平衡。自适应密化算法针对动态场景进行了专门优化，支持时间感知的几何表示。
+
+理论分析证明了方法的收敛性和复杂度特性，为实际应用提供了理论指导。该方法论框架为解决4DGS在视点外推任务上的挑战提供了系统性的解决方案，下一章将详细介绍具体的工程实现和系统架构。

@@ -1,0 +1,59 @@
+flowchart TD
+    subgraph RawData["Raw Waymo Open Dataset"]
+        A["Waymo TFRecord Files<br/>Multi-sensor Logs"]
+        B["RGB Image Sequences<br/>5 Cameras × T Frames"]
+        C["LiDAR Point Clouds<br/>64-beam Velodyne"]
+        D["Object Trajectories<br/>3D Bounding Boxes"]
+        E["Camera Calibration<br/>Intrinsic & Extrinsic"]
+    end
+    
+    subgraph Preprocessing["Data Preprocessing Pipeline"]
+        F["waymo_converter.py<br/>TFRecord → Dataset Format"]
+        G["Point Cloud Colorization<br/>RGB Projection & Interpolation"]
+        H["Trajectory Parsing<br/>SE(3) Pose Extraction"]
+        I["Camera Pose Estimation<br/>Structure-from-Motion"]
+        J["Temporal Synchronization<br/>Multi-modal Alignment"]
+    end
+    
+    subgraph ConditionGen["Geometric Condition Generation"]
+        K["LiDAR Renderer<br/>waymo_render_lidar_pcd.py"]
+        L["Point Cloud Projection<br/>3D → 2D Mapping"]
+        M["Depth Map Generation<br/>Z-buffer Rendering"]
+        N["Visibility Mask<br/>Occlusion Handling"]
+        O["RGB-D Condition Images<br/>Pixel-level Geometry"]
+    end
+    
+    subgraph SceneConstruction["Scene Object Construction"]
+        P["Scene Class<br/>Container & Manager"]
+        Q["Dataset Class<br/>Data Access Interface"]
+        R["PointCloudProcessor<br/>Geometric Processing"]
+        S["Metadata Management<br/>Object Tracking Info"]
+    end
+    
+    A --> F
+    B --> F
+    C --> G
+    D --> H
+    E --> I
+    
+    F --> K
+    G --> L
+    H --> M
+    I --> N
+    J --> O
+    
+    K --> P
+    L --> Q
+    M --> R
+    N --> S
+    O --> S
+    
+    classDef rawStyle fill:#E8EAF6,stroke:#3F51B5,stroke-width:2px,color:#000000
+    classDef preprocessStyle fill:#E0F2F1,stroke:#00695C,stroke-width:2px,color:#000000
+    classDef conditionStyle fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px,color:#000000
+    classDef sceneStyle fill:#F3E5F5,stroke:#8E24AA,stroke-width:2px,color:#000000
+    
+    class A,B,C,D,E rawStyle
+    class F,G,H,I,J preprocessStyle
+    class K,L,M,N,O conditionStyle
+    class P,Q,R,S sceneStyle

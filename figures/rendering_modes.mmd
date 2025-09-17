@@ -1,0 +1,60 @@
+graph TD
+    subgraph RendererCore["StreetGaussianRenderer Core"]
+        A["StreetGaussianRenderer<br/>Unified Rendering Interface"]
+        A --> B["render_all()<br/>Complete Scene Composition"]
+        A --> C["render_background()<br/>Static Scene Components"] 
+        A --> D["render_object()<br/>Dynamic Actor Components"]
+        A --> E["render_sky()<br/>Environment Mapping"]
+    end
+    
+    subgraph GaussianComponents["Gaussian Primitive Components"]
+        F["Background Gaussians<br/>𝒢_bkgd = {μ_i, Σ_i, α_i, c_i}"]
+        G["Actor Gaussians<br/>𝒢_obj^(k) = T_k(t) ∘ {μ_j, Σ_j, α_j, c_j}"]
+        H["Sky Gaussians/Cubemap<br/>Environment Representation"]
+    end
+    
+    subgraph RenderingKernel["Differentiable Rasterization"]
+        I["render_kernel_gsplat()<br/>GPU-accelerated Splatting"]
+        J["Covariance Computation<br/>Σ_2D = JΣ_3DJ^T"]
+        K["Alpha Blending<br/>C = Σ α_i c_i ∏(1-α_j)"]
+        L["Depth Computation<br/>D = Σ α_i d_i ∏(1-α_j)"]
+    end
+    
+    subgraph OutputModes["Rendering Outputs"]
+        M["Complete Scene<br/>I_full = I_bkgd + I_obj + I_sky"]
+        N["Background Only<br/>I_bkgd"]
+        O["Objects Only<br/>I_obj"]
+        P["Sky Only<br/>I_sky"]
+    end
+    
+    B --> M
+    C --> N
+    D --> O
+    E --> P
+    
+    F --> C
+    G --> D
+    H --> E
+    
+    F --> B
+    G --> B
+    H --> B
+    
+    B --> I
+    C --> I
+    D --> I
+    E --> I
+    
+    I --> J
+    J --> K
+    K --> L
+    
+    classDef rendererStyle fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000000
+    classDef gaussianStyle fill:#E8F5E8,stroke:#2E7D32,stroke-width:2px,color:#000000
+    classDef kernelStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000000
+    classDef outputStyle fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#000000
+    
+    class A,B,C,D,E rendererStyle
+    class F,G,H gaussianStyle
+    class I,J,K,L kernelStyle
+    class M,N,O,P outputStyle

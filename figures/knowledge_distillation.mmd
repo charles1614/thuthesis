@@ -1,0 +1,51 @@
+graph TB
+    subgraph TeacherModel["Teacher Model: Video Diffusion"]
+        A["Pretrained Diffusion<br/>D_φ(z_T, C_lidar)"]
+        A --> B["Denoising Process<br/>x_{t-1} = μ_θ(x_t, C, t) + σ_t ε"]
+        B --> C["High-Quality Synthesis<br/>I_pseudo ∈ R^(3×H×W)"]
+    end
+    
+    subgraph StudentModel["Student Model: 4D Gaussian Splatting"]
+        D["4DGS Representation<br/>𝒢 = {μ, Σ, α, SH}"]
+        D --> E["Differentiable Rendering<br/>I_render = R(𝒢, π)"]
+        E --> F["Multi-component Output<br/>{I_full, I_bkgd, I_obj}"]
+    end
+    
+    subgraph KnowledgeTransfer["Knowledge Transfer Mechanism"]
+        C --> G["Pseudo Ground Truth<br/>Supervision Signal"]
+        F --> H["Rendering Quality<br/>Assessment"]
+        G --> I["Distillation Loss<br/>L_distill = ||I_render - I_pseudo||"]
+        H --> I
+        I --> J["Progressive Guidance<br/>s(k) = s_max - (s_max - s_min) × k/K"]
+    end
+    
+    subgraph OptimizationLoop["Joint Optimization"]
+        J --> K["Hybrid Loss Function<br/>L_total = L_recon + λ_novel L_distill + L_reg"]
+        K --> L["Gradient Computation<br/>∇_θ L_total"]
+        L --> M["Parameter Update<br/>θ ← θ - η∇L"]
+        M --> D
+    end
+    
+    subgraph RegularizationTerms["Regularization Components"]
+        N["Depth Consistency<br/>L_depth = ||D_render - D_lidar||"]
+        O["Scale Regularization<br/>L_scale = min(s) + ||s_top2||²/∏s_top2 - 2"]
+        P["Sky Region Loss<br/>L_sky = -E[log(1-α_sky)]"]
+        Q["Opacity Regularization<br/>Entropy-based Pruning"]
+    end
+    
+    N --> K
+    O --> K
+    P --> K
+    Q --> K
+    
+    classDef teacherStyle fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000000
+    classDef studentStyle fill:#E8F5E8,stroke:#2E7D32,stroke-width:2px,color:#000000
+    classDef transferStyle fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px,color:#000000
+    classDef optimStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000000
+    classDef regStyle fill:#FCE4EC,stroke:#C2185B,stroke-width:2px,color:#000000
+    
+    class A,B,C teacherStyle
+    class D,E,F studentStyle
+    class G,H,I,J transferStyle
+    class K,L,M optimStyle
+    class N,O,P,Q regStyle

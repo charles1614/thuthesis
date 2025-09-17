@@ -1,0 +1,54 @@
+graph LR
+    subgraph InputLayer["Input Processing"]
+        A["Video Frames<br/>X ∈ R^(T×C×H×W)"] 
+        B["LiDAR Conditions<br/>C_lidar ∈ R^(T×3×H×W)"]
+        C["Camera Parameters<br/>(K, T_w2c, t)"]
+    end
+    
+    subgraph EncodingLayer["Feature Encoding"]
+        D["Temporal Encoder<br/>E_temporal"]
+        E["Spatial Encoder<br/>E_spatial"] 
+        F["Condition Encoder<br/>E_cond"]
+        G["Timestep Embedding<br/>γ(t) ∈ R^d"]
+    end
+    
+    subgraph DiffusionCore["3D UNet Diffusion Core"]
+        H["3D UNet Backbone<br/>ε_θ(x_t, t, c)"]
+        I["Spatiotemporal Attention<br/>MultiHead(Q,K,V)"]
+        J["Cross Attention<br/>Condition Integration"]
+        K["Residual Blocks<br/>VideoResBlock"]
+    end
+    
+    subgraph OutputLayer["Denoising Output"]
+        L["Noise Prediction<br/>ε_pred ∈ R^(T×C×H×W)"]
+        M["Sampling Scheduler<br/>EDM/DDPM"]
+        N["Generated Video<br/>X_0 ~ p_θ(x|c)"]
+    end
+    
+    A --> D
+    A --> E
+    B --> F
+    C --> F
+    
+    D --> H
+    E --> H
+    F --> J
+    G --> H
+    
+    H --> I
+    I --> K
+    K --> J
+    J --> L
+    
+    L --> M
+    M --> N
+    
+    classDef inputStyle fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000000
+    classDef encodingStyle fill:#F1F8E9,stroke:#558B2F,stroke-width:2px,color:#000000
+    classDef coreStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000000
+    classDef outputStyle fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#000000
+    
+    class A,B,C inputStyle
+    class D,E,F,G encodingStyle
+    class H,I,J,K coreStyle
+    class L,M,N outputStyle
