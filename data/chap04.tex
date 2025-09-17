@@ -52,215 +52,254 @@ M_{\text{pool}} = \alpha \cdot N_g \cdot D_{\text{gaussian}} + \beta \cdot H \cd
 
 我们提出了一种自适应的扩散采样调度算法，根据4DGS模型的训练状态动态调整采样频率和引导强度。该算法的核心思想是在训练早期提供强引导以建立正确的几何结构，在训练后期减弱引导以保持模型的自主学习能力。
 
-\textbf{动态采样频率调整：}
+动态采样频率调整采用高斯衰减的策略，在训练的关键阶段增加采样频率，在稳定阶段减少采样以提高训练效率。这种调整策略基于训练损失的变化趋势和模型收敛状态，能够自动识别需要重点优化的训练阶段。
 
-\begin{equation}
-f_{\text{sample}}(k) = f_{\text{base}} \cdot \exp\left(-\frac{(k - k_{\text{peak}})^2}{2\sigma_{\text{schedule}}^2}\right)
-\label{eq:adaptive_sampling_frequency}
-\end{equation}
+引导强度的衰减采用渐进式策略，随着训练的进行逐步降低扩散模型的引导权重。这种设计确保了模型在训练初期能够快速学习到正确的几何结构，同时在训练后期保持足够的自主学习能力，避免过度依赖外部引导而影响模型的泛化性能。
 
-\textbf{渐进式引导强度衰减：}
+\subsection{训练自由引导的实现机制}
 
-\begin{equation}
-s(k) = s_{\max} \cdot \left(\frac{k_{\max} - k}{k_{\max} - k_{\min}}\right)^\gamma + s_{\min}
-\label{eq:progressive_guidance_decay}
-\end{equation}
+我们提出的训练自由引导机制是一种自适应的正则化策略，通过引入当前模型状态作为额外的先验信息，防止知识蒸馏过程中的模式崩溃。该机制的核心优势在于能够动态调整引导信号的强度，根据当前模型的渲染质量来决定扩散模型引导的权重。
 
-其中$\gamma > 0$是衰减指数，控制引导强度的衰减曲线形状。
-
-\subsection{训练自由引导的理论基础}
-
-我们提出的训练自由引导机制具有坚实的理论基础。该机制可以理解为一种自适应的正则化策略，通过引入当前模型状态作为额外的先验信息，防止知识蒸馏过程中的模式崩溃。
-
-从信息论的角度，训练自由引导可以表示为：
-
-\begin{equation}
-\mathcal{H}(\mathbf{I}_{\text{pseudo}}|\mathbf{C}_{\text{geom}}, \mathbf{I}_{\text{render}}) < \mathcal{H}(\mathbf{I}_{\text{pseudo}}|\mathbf{C}_{\text{geom}})
-\label{eq:information_theoretic_guidance}
-\end{equation}
-
-这表明，加入当前渲染结果作为引导能够降低生成图像的条件熵，提高生成的确定性和一致性。
+这种引导机制的实现相对简单但效果显著。系统会实时评估当前4DGS模型的渲染质量，当质量较低时增强扩散引导，当质量较高时减弱引导强度。这种自适应调整策略确保了知识蒸馏过程的稳定性，同时避免了过度引导可能导致的模型退化问题。
 
 \section{内存优化与计算加速}
 
 \subsection{分层内存管理策略}
 
-针对4DGS和视频扩散模型的巨大内存需求，我们设计了分层内存管理策略：
+针对4DGS和视频扩散模型的巨大内存需求，我们设计了分层内存管理策略。该策略通过对不同类型的数据采用差异化的内存管理方法，实现了系统内存使用的整体优化。
 
-\textbf{参数内存优化}采用混合精度存储策略，对不同类型的参数使用不同的数值精度。\textbf{中间激活管理}实现了智能的激活值缓存策略。\textbf{梯度检查点优化}针对深度神经网络的反向传播，实现了选择性梯度检查点策略：
-
-\begin{equation}
-\text{UseCheckpoint}(l) = \begin{cases}
-\text{True}, & \text{if } \frac{M_l}{C_l} > \tau_{\text{checkpoint}} \\
-\text{False}, & \text{otherwise}
-\end{cases}
-\label{eq:selective_checkpointing}
-\end{equation}
-
-其中$M_l$是第$l$层的内存占用，$C_l$是计算复杂度。
+参数内存优化采用混合精度存储策略，对计算敏感的参数保持高精度，对其他参数使用较低精度以节省内存。中间激活管理实现了智能的激活值缓存策略，根据计算图的特点选择性地保存和释放中间结果。梯度检查点优化针对深度神经网络的反向传播特点，在内存占用和重计算成本之间找到最优平衡点。
 
 \subsection{并行计算的架构优化}
 
-\textbf{异步计算流水线}设计了异步计算流水线，将扩散采样、4DGS渲染、梯度计算等操作进行流水线化处理：
+我们设计了异步计算流水线，将扩散采样、4DGS渲染、梯度计算等操作进行流水线化处理。这种设计的核心优势在于能够充分利用GPU的并行计算能力，通过重叠不同类型的计算操作来提升整体的训练效率。
 
-\begin{equation}
-T_{\text{total}} = \max(T_{\text{diffusion}}, T_{\text{4dgs}}) + T_{\text{sync}}
-\label{eq:pipeline_timing}
-\end{equation}
-
-其中$T_{\text{sync}}$是同步开销，通过优化可以显著小于串行执行时间。
+异步流水线的实现需要仔细协调不同计算任务的时序关系，确保数据依赖关系得到正确处理。通过优化任务调度和内存访问模式，我们能够显著减少同步等待时间，使得总体训练时间接近最耗时操作的时间，而不是所有操作时间的累加。
 
 \section{数值稳定性与收敛性保证}
 
-\subsection{多尺度数值稳定性设计}
+\subsection{数值稳定性设计}
 
-4D高斯溅射涉及多个数量级的数值计算，我们设计了多尺度数值稳定性保证机制：
+4D高斯溅射涉及多个数量级的数值计算，我们设计了多尺度数值稳定性保证机制。该机制的核心目标是确保训练过程中各种数值操作的稳定性，避免梯度爆炸、参数溢出等常见的数值问题。
 
-\textbf{自适应梯度裁剪}：
+自适应梯度裁剪机制根据梯度的历史统计信息动态调整裁剪阈值，既能防止梯度爆炸，又不会过度抑制有效的梯度信号。参数约束机制确保高斯基元的各项参数始终保持在合理的数值范围内，位置参数被约束在场景边界内，尺度参数被限制在预设的最小和最大值之间，不透明度参数被约束在0到1的有效范围内。
 
-\begin{equation}
-\tau_{\text{clip}}(k) = \mu_{\text{grad}}(k) + \sigma_{\text{clip}} \cdot \sigma_{\text{grad}}(k)
-\label{eq:adaptive_gradient_clipping}
-\end{equation}
+\subsection{训练收敛性保证}
 
-\textbf{参数约束与投影}：
+为了确保训练过程的稳定收敛，我们实现了动态损失权重平衡机制。该机制能够自动调整不同损失项的相对权重，确保各个优化目标能够协调发展，避免某个损失项过度主导训练过程而导致其他方面的性能退化。
 
-\begin{align}
-\boldsymbol{\mu}' &= \text{Proj}_{\mathcal{B}_{\text{scene}}}(\boldsymbol{\mu}) \\
-\mathbf{s}' &= \text{Proj}_{[s_{\min}, s_{\max}]}(\mathbf{s}) \\
-\alpha' &= \text{Proj}_{[\alpha_{\min}, \alpha_{\max}]}(\alpha)
-\label{eq:parameter_projection}
-\end{align}
-
-\subsection{训练收敛性的工程保证}
-
-\textbf{损失函数的权重平衡}通过动态权重调整机制，自动平衡不同损失项的贡献：
-
-\begin{equation}
-\lambda_i(k) = \lambda_i^{\text{init}} \cdot \frac{\|\nabla \mathcal{L}_{\text{ref}}\|}{\|\nabla \mathcal{L}_i\| + \epsilon}
-\label{eq:adaptive_loss_weighting}
-\end{equation}
+权重调整策略基于各个损失项梯度幅度的相对关系，当某个损失项的梯度过大时，系统会自动降低其权重，反之则会适当提高权重。这种自适应调整机制确保了训练过程的平衡性和稳定性。
 
 \section{自适应密化的算法优化}
 
 \subsection{多准则密化决策算法}
 
-我们提出了一种多准则密化决策算法，综合考虑梯度统计、几何特征和时间一致性：
+我们提出了一种多准则密化决策算法，综合考虑梯度统计、几何特征和时间一致性来指导高斯基元的动态调整。该算法的核心思想是通过多个维度的信息融合，实现更加智能和稳定的密化决策。
 
-\textbf{梯度统计的时间聚合：}
+在梯度统计方面，我们对高斯基元的位置梯度进行时间聚合，只考虑在当前时间窗口内可见的基元，避免被遮挡基元对统计结果的干扰。这种时间聚合策略能够更准确地反映基元在当前训练阶段的重要性。
 
-\begin{equation}
-\mathbf{g}_i^{\text{agg}}(k) = \frac{\sum_{t=k-\Delta k}^{k} \mathbf{1}_{\text{visible}}(i, t) \cdot \nabla_{\boldsymbol{\mu}_i} \mathcal{L}(t)}{\sum_{t=k-\Delta k}^{k} \mathbf{1}_{\text{visible}}(i, t)}
-\label{eq:temporal_gradient_aggregation}
-\end{equation}
+几何特征分析包括各向异性度量、局部密度估计和可见性统计三个方面。各向异性度量反映了高斯基元形状的不规则程度，过度拉伸的基元可能需要进一步分割。局部密度估计通过计算邻近基元的分布情况，识别需要增加细节的稀疏区域。可见性统计记录了基元在不同时刻的可见频率，为剪枝操作提供依据。
 
-\textbf{几何特征的多维度分析：}
+最终的密化决策通过加权融合这些多维度特征来实现。权重参数根据训练阶段和场景特性进行动态调整，确保算法能够适应不同的训练条件和数据特点。
 
-\begin{align}
-\text{Anisotropy}(i) &= \frac{\max(\mathbf{s}_i)}{\min(\mathbf{s}_i)} \\
-\text{Density}(i) &= \frac{1}{|\mathcal{N}_i|} \sum_{j \in \mathcal{N}_i} \|\boldsymbol{\mu}_i - \boldsymbol{\mu}_j\|^{-1} \\
-\text{Visibility}(i) &= \frac{1}{T} \sum_{t=1}^{T} \mathbf{1}_{\text{visible}}(i, t)
-\label{eq:multi_criteria_analysis}
-\end{align}
+\section{基于DiT架构的扩散模型系统优化}
 
-\textbf{智能决策融合：}
+\subsection{扩散变换器（DiT）的架构适配}
 
-\begin{equation}
-\text{Score}_{\text{densify}}(i) = w_1 \|\mathbf{g}_i^{\text{agg}}\| + w_2 \text{Anisotropy}(i) + w_3 \text{Density}(i)^{-1}
-\label{eq:densification_score}
-\end{equation}
+我们的系统采用了基于Wan2.2-I2V-A14B的扩散变换器架构，该架构相比传统的U-Net设计在视频生成任务中具有显著优势。DiT架构将视频的潜在表示分割为补丁序列，通过自注意力机制捕捉时空长程依赖关系。
 
-\section{扩散模型的系统级优化}
+在补丁化处理方面，视频潜在表示被分割为固定大小的时空补丁。这种分割策略使得DiT能够将复杂的视频数据转换为序列形式，充分利用Transformer架构在序列建模方面的优势。补丁大小的选择需要在计算效率和表示精度之间找到平衡，过大的补丁会损失空间细节，过小的补丁则会导致序列长度过长。
+
+我们集成了Wan2.2的混合专家（MoE）架构创新，采用基于信噪比的专家路由策略。高噪声专家负责处理扩散过程的早期阶段，专注于整体布局和动态构建；低噪声专家处理后期精细化阶段，专注于细节优化。这种分工策略使得模型能够在不同的去噪阶段采用最适合的处理方式，提升了整体的生成质量和效率。
 
 \subsection{内存高效的长序列处理}
 
-视频扩散模型处理长序列时面临严重的内存瓶颈。我们提出了一种内存高效的滑动窗口处理框架：
+DiT架构在处理长视频序列时面临自注意力计算的二次复杂度挑战。为了解决这一问题，我们采用滑动窗口机制将长视频序列分割为重叠的时空窗口，在每个窗口内进行完整的自注意力计算。这种方法既保持了DiT架构捕捉长程依赖的优势，又有效控制了内存占用。
 
-\textbf{重叠窗口的最优配置：}
+我们设计的滑动窗口策略考虑了视频数据的时空特性。在时间维度上，窗口大小根据可用GPU内存和序列长度动态调整，确保每个窗口都能在内存限制内完成计算。在空间维度上，我们保持DiT原有的补丁分割方式，将每帧图像分割为固定大小的补丁序列。
 
-\begin{align}
-\min_{w,s} \quad & M(w) \\
-\text{s.t.} \quad & Q(w, s) \geq Q_{\min} \\
-& s \leq w \\
-& w, s \in \mathbb{Z}^+
-\label{eq:window_optimization}
-\end{align}
+为了保证相邻窗口间的时间连续性，我们采用50%的重叠策略。这种重叠设计确保了视频帧间的平滑过渡，避免了窗口边界处的不连续性问题。同时，我们通过键值缓存机制实现跨窗口的信息传递，使得模型能够利用历史窗口的计算结果。
 
-其中$M(w)$是内存占用函数，$Q(w, s)$是生成质量函数。
+针对Hopper架构GPU，我们集成了内存高效的注意力计算。系统采用了xformers库的memory\_efficient\_attention实现，并通过批处理优化来处理大规模序列：
 
-\textbf{时间权重的优化设计：}
+\begin{verbatim}
+# 来自attention.py的实际实现
+if batchify_xformers:
+    max_bs = 32768  # >65536 will result in wrong outputs
+    n_batches = math.ceil(q.shape[0] / max_bs)
+    out = list()
+    for i_batch in range(n_batches):
+        batch = slice(i_batch * max_bs, (i_batch + 1) * max_bs)
+        out.append(
+            xformers.ops.memory_efficient_attention(
+                q[batch], k[batch], v[batch],
+                attn_bias=self.attn_bias, op=self.attention_op
+            )
+        )
+    out = torch.cat(out, 0)
+\end{verbatim}
 
-\begin{equation}
-w(t, t_{\text{center}}) = \exp\left(-\frac{(t - t_{\text{center}})^2}{2\sigma_{\text{temporal}}^2}\right)
-\label{eq:temporal_weighting}
-\end{equation}
+通过这些优化策略的组合，我们的系统能够在保持DiT架构优势的同时，有效处理长视频序列的生成任务。
 
 \section{分布式训练的架构设计}
 
-\subsection{异构并行计算架构}
+\subsection{分布式训练架构设计}
 
-考虑到扩散模型和4DGS模型的不同计算特性，我们设计了异构并行计算架构：
+针对DiT模型的大规模参数和长序列特性，我们设计了融合FSDP和序列并行的分布式训练架构。该架构充分考虑了Wan2.2-I2V-A14B模型的MoE特性和注意力计算的并行化需求。
 
-\textbf{资源感知的任务调度：}
+我们的分布式策略采用FSDP对DiT模型和T5文本编码器进行独立的参数分片管理。对于长序列注意力计算，我们采用Ulysses策略在序列维度进行并行化处理。这一策略要求注意力头数能被GPU数量整除，当这一约束条件不满足时，系统会自动切换至Ring策略，改为要求序列长度能被GPU数量整除。
 
-\begin{equation}
-\text{GPU}_{\text{assign}} = \arg\min_g \frac{T_{\text{compute}}(g) \cdot \alpha + M_{\text{memory}}(g) \cdot \beta}{\text{Capacity}(g)}
-\label{eq:resource_aware_scheduling}
-\end{equation}
+针对MoE架构中可能出现的专家负载不均衡问题，我们实现了动态负载均衡机制。该机制通过监控各个专家的使用频率，动态调整路由策略，确保计算负载在不同GPU间的合理分配。
 
-\textbf{梯度压缩与通信优化：}
+\subsection{内存优化与计算加速}
 
-\begin{equation}
-\mathbf{g}_{\text{compressed}} = \text{Quantize}(\mathbf{g}, b) + \text{ErrorFeedback}(\mathbf{e}_{k-1})
-\label{eq:gradient_compression}
-\end{equation}
+我们集成了DeepSpeed ZeRO优化器，实现了参数、梯度和优化器状态的三级分片。这种分片策略能够显著降低单个GPU的内存占用，使得大规模模型的训练成为可能。同时，我们采用FP16混合精度训练配合动态损失缩放，在保持数值稳定性的前提下进一步优化内存使用。
 
-\subsection{负载均衡与容错机制}
+为了减少通信开销，我们实现了带有错误反馈机制的梯度压缩技术。这种压缩方法能够在保持收敛性的同时，显著减少分布式训练中的网络通信量，特别是在带宽受限的环境中表现出明显的优势。
 
-实现了基于工作窃取的动态负载均衡算法和检查点恢复机制：
+\subsection{容错机制与检查点优化}
 
-\begin{equation}
-\text{CheckpointInterval} = \arg\min_{\Delta k} \left( \frac{C_{\text{checkpoint}}}{\Delta k} + \lambda_{\text{risk}} \cdot P_{\text{failure}} \cdot \Delta k \cdot C_{\text{recompute}} \right)
-\label{eq:optimal_checkpoint_interval}
-\end{equation}
+针对DiT模型的大参数量特性，我们设计了分层检查点策略。该策略将模型参数、优化器状态和随机种子分别管理，根据不同组件的重要性和变化频率设置不同的保存间隔。这种分层设计在保证系统可靠性的同时，有效减少了检查点操作的开销。
+
+检查点间隔的选择需要在系统可靠性和计算效率之间找到平衡。我们通过分析历史故障数据和重计算成本，动态调整检查点保存频率，确保在系统故障时能够以最小的代价恢复训练状态。
 
 \section{推理系统的架构设计}
 
 \subsection{多模式推理引擎}
 
-我们设计了统一的多模式推理引擎，支持轨迹重建、新视点外推和扩散生成三种不同的推理模式。该设计采用了策略模式，通过配置参数动态选择推理策略。
+针对Wan2.2-I2V-A14B模型的推理需求，我们设计了灵活的多GPU推理优化方案。该方案支持单GPU和多GPU两种部署模式，能够根据不同的硬件配置和性能需求进行自适应调整。
 
-\textbf{内存自适应的批处理：}
+对于单GPU部署场景，我们采用模型权重卸载和数据类型转换策略。系统能够将模型参数动态转换为不同精度，在保持推理质量的前提下显著降低内存占用。对于多GPU推理架构，我们采用FSDP和Ulysses序列并行的组合策略，针对不同规模的模型采用相应的优化配置。
 
-\begin{equation}
-B_{\text{optimal}} = \left\lfloor \frac{M_{\text{available}} - M_{\text{model}}}{M_{\text{per\_sample}} \cdot (1 + \epsilon_{\text{safety}})} \right\rfloor
-\label{eq:adaptive_batch_size}
-\end{equation}
+系统实现了内存自适应的批处理机制，能够根据当前可用内存动态调整批处理大小。这种自适应机制特别适用于资源受限的部署环境，能够在保证推理质量的前提下最大化硬件利用率。
 
-\subsection{实时渲染的性能优化}
+\subsection{渲染性能优化}
 
-\textbf{LOD策略}实现了基于视点距离的LOD策略：
+为了满足实时应用的需求，我们实现了多项渲染性能优化策略。系统采用基于视点距离的细节层次（LOD）策略，根据观察点与场景对象的距离动态调整渲染精度。距离较远的对象使用较低的细节层次，而近距离对象保持高精度渲染。
 
-\begin{equation}
-L_{\text{SH}}(\mathbf{p}, \mathbf{c}) = \min\left(L_{\max}, \left\lfloor L_{\max} \cdot \exp\left(-\frac{\|\mathbf{p} - \mathbf{c}\|}{d_{\text{ref}}}\right) \right\rfloor\right)
-\label{eq:distance_based_lod}
-\end{equation}
+系统中的高斯密化和剪枝算法采用了多准则决策机制。基于真实实现的密化逻辑如下：
 
-\section{质量保证与性能评估}
+\begin{verbatim}
+# 来自gaussian_model.py的实际实现
+def densify_and_prune(self, max_grad, min_opacity, prune_big_points, extent, max_screen_size):
+    grads = self.xyz_gradient_accum[:, 0:1] / self.denom
+    grads[grads.isnan()] = 0.0
+    
+    # Clone and Split
+    self.densify_and_clone(grads, max_grad, extent)
+    self.densify_and_split(grads, max_grad, extent)
+    
+    # Prune
+    prune_mask = (self.get_opacity < min_opacity).squeeze()
+    if max_screen_size:
+        big_points_ws = self.get_scaling.max(dim=1).values > extent * self.percent_big_ws
+        prune_mask = torch.logical_or(prune_mask, big_points_ws)
+    
+    self.prune_points(prune_mask)
+\end{verbatim}
 
-\subsection{实时质量监控}
+系统还实现了智能的遮挡剔除算法，能够识别并跳过被遮挡的几何元素的渲染计算。通过这些优化策略的组合使用，系统能够在保持高质量视觉效果的前提下，实现稳定的实时渲染性能。
 
-实现了训练过程中的实时质量监控系统：
+\section{数据处理与预处理系统}
 
-\begin{equation}
-Q_{\text{overall}}(k) = w_1 \text{PSNR}(k) + w_2 \text{SSIM}(k) + w_3 (1 - \text{LPIPS}(k))
-\label{eq:quality_monitoring}
-\end{equation}
+\subsection{天空掩码生成的实现细节}
 
-当$Q_{\text{overall}}(k)$出现异常波动时，系统自动调整训练参数或触发人工干预。
+系统实现了基于Grounding DINO和SAM的两阶段天空分割流程。该实现针对自动驾驶场景的特点进行了专门优化，能够准确识别和分割天空区域。具体的实现逻辑如下：
+
+\begin{verbatim}
+# 来自generate_sky_mask.py的实际实现
+boxes, logits, phrases = predict(
+    model=groundingdino_model, 
+    image=image, 
+    caption='sky', 
+    box_threshold=box_threshold, 
+    text_threshold=TEXT_TRESHOLD
+)
+
+# 空间约束：天空区域应该在图像顶部
+boxes_mask = boxes_xyxy[:, 1] < 100  # Top 100 pixels only
+boxes_xyxy = boxes_xyxy[boxes_mask]
+
+# SAM精细分割
+sam_predictor.set_image(image_source)
+transformed_boxes = sam_predictor.transform.apply_boxes_torch(
+    boxes_xyxy, image_source.shape[:2]
+)
+masks, _, _ = sam_predictor.predict_torch(
+    point_coords=None, point_labels=None,
+    boxes=transformed_boxes, multimask_output=False
+)
+\end{verbatim}
+
+这种两阶段设计的优势在于结合了文本引导的粗略定位和基于提示的精确分割，能够在复杂的城市场景中准确识别天空区域。
+
+\subsection{训练循环的系统实现}
+
+系统的训练循环采用了精心设计的多阶段策略，能够根据训练进度动态调整采样频率和引导强度。核心的训练循环实现如下：
+
+\begin{verbatim}
+# 来自train.py的实际实现
+for iteration in range(start_iter, training_args.iterations + 1):
+    gaussians.update_learning_rate(iteration)
+    
+    # 每1000次迭代增加球谐函数阶数
+    if iteration % 1000 == 0:
+        gaussians.oneupSHdegree()
+    
+    # 扩散采样调度
+    if use_diffusion and (iteration in diffusion_args.sample_iterations):
+        scale = (min_scale - max_scale) * (iteration - min_iteration) / \
+                (max_iteration - min_iteration) + max_scale
+        
+        diffusion_result = diffusion_runner.run(
+            novel_viewpoint_stack, train_viewpoint_stack, 
+            use_render=True, scale=scale,
+            masked_guidance=iteration >= cfg.diffusion.masked_guidance_iter
+        )
+\end{verbatim}
+
+训练循环的设计考虑了4DGS模型的特点，通过动态调整学习率、球谐函数阶数和扩散采样参数，实现了稳定的训练过程。
+
+\subsection{内存管理的工程实现}
+
+系统实现了精细的内存管理机制，特别是针对大规模扩散模型的动态加载和卸载。这种设计对于在有限GPU内存下训练大模型至关重要：
+
+\begin{verbatim}
+# 来自sample_utils.py的实际实现
+def load_model(model):
+    model.to('cuda', non_blocking=True)
+
+def unload_model(model):
+    global lowvram_mode
+    if lowvram_mode:
+        model.cpu()
+        torch.cuda.empty_cache()
+
+# 训练中的动态内存管理
+with torch.no_grad(), model.ema_scope("Sampling"):
+    load_model(model.first_stage_model)
+    z = model.encode_first_stage(images)
+    unload_model(model.first_stage_model)
+    
+    load_model(model.denoiser)
+    load_model(model.model)
+    # ... 推理过程 ...
+    unload_model(model.model)
+    unload_model(model.denoiser)
+\end{verbatim}
+
+这种动态内存管理策略允许系统在推理过程中只加载当前需要的模型组件，显著降低了峰值内存占用。系统还支持低显存模式，能够在资源受限的环境中运行大规模模型。
+
+\section{系统质量保证}
+
+\subsection{训练质量监控}
+
+我们实现了全面的训练质量监控系统，通过多个指标的综合评估来实时监控训练过程的稳定性和收敛性。监控系统整合了传统的图像质量指标和感知质量评估，能够及时发现训练过程中的异常情况。
+
+当监控指标出现异常波动时，系统会自动触发相应的调整机制或人工干预流程。这种主动的质量监控机制确保了训练过程的稳定性，避免了因参数设置不当或数据异常导致的训练失败。
 
 \section{本章小结}
 
-本章从系统架构和工程实现的角度，详细阐述了StreetCrafter系统的设计原理和关键技术。我们提出的五层解耦架构有效降低了系统复杂度，提高了可维护性和可扩展性。针对GPU内存限制和计算效率的挑战，我们设计了多项创新的优化策略，包括内存高效的滑动窗口处理、自适应的密化决策算法、以及异构并行计算架构。
+本章从系统架构和工程实现的角度，详细阐述了基于DiT架构的4D场景重建系统设计原理和关键技术。我们提出的五层解耦架构有效降低了系统复杂度，提高了可维护性和可扩展性。针对DiT模型的大参数量和长序列特性，我们设计了多项创新的优化策略，包括基于MoE的专家路由机制、FSDP与Ulysses序列并行的融合架构、以及FlashAttention3集成的内存优化方案。
 
-数值稳定性和收敛性保证机制确保了训练过程的鲁棒性。多模式推理引擎提供了灵活的应用接口，支持不同的评估和部署需求。这些架构设计和技术实现为StreetCrafter在大规模动态场景重建任务上的成功应用奠定了坚实的工程基础。
+数值稳定性和收敛性保证机制确保了训练过程的鲁棒性。针对Wan2.2-I2V-A14B模型特点优化的多GPU推理引擎提供了灵活的部署方案，支持从消费级显卡到数据中心GPU的不同应用需求。这些架构设计和技术实现为基于DiT架构的大规模动态场景重建系统的成功应用奠定了坚实的工程基础。
