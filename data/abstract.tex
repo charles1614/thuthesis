@@ -3,11 +3,11 @@
 % 中英文摘要和关键字
 
 \begin{abstract}
-  随着自动驾驶技术向L5级完全自主驾驶演进，高保真场景重建已成为支撑大规模仿真测试的核心技术基础。然而，现有的神经场景表示方法在视点外推任务上存在显著性能退化，严重限制了其在仿真系统中的实用价值。本文针对4D高斯溅射（4DGS）在视点外推能力上的根本性局限，提出了一种基于扩散先验的引导优化框架StreetCrafter，通过融合视频扩散模型的强大生成先验来系统性地提升4DGS的视点泛化能力。
+  随着自动驾驶技术向L5级完全自主驾驶演进，高保真场景重建已成为支撑大规模仿真测试的核心技术基础。然而，现有的神经场景表示方法在视点外推任务上存在显著性能退化，严重限制了其在仿真系统中的实用价值。本文针对4D高斯溅射（4DGS）在视点外推能力上的根本性局限，提出了一种基于扩散先验的引导优化框架ReGen，通过融合视频扩散模型的强大生成先验来系统性地提升4DGS的视点泛化能力。
 
   本文的核心贡献包括四个方面。首先，提出了训练自由引导机制，设计了同时利用几何条件和当前渲染状态的双重引导策略，实现了更加精确和稳定的监督信号传递。其次，开发了自适应采样调度算法，能够根据4DGS模型的收敛状态动态调整扩散采样的频率和强度，显著提升了训练效率和优化质量。第三，构建了多模态正则化框架，综合考虑几何一致性、时间连贯性和视觉质量，通过多个正则化项的协同作用确保训练过程的稳定性。第四，设计了五层解耦的系统架构，包含数据处理层、视频扩散模型层、4D高斯溅射层、可微分渲染引擎和扩散监督框架，实现了复杂算法的模块化分解和高效实现。
 
-  本文基于Waymo Open Dataset进行了全面的实验验证，在视点外推任务上相比现有最先进方法取得了显著的性能提升。系统采用了基于Wan2.2-I2V-A14B的扩散变换器架构，集成了混合专家机制和内存高效的长序列处理技术，支持分布式训练和多模式推理部署。研究成果为高保真场景重建技术在自动驾驶仿真中的实际应用奠定了坚实的技术基础。
+  本文基于Waymo Open Dataset进行了全面的实验验证，在视点外推任务上相比现有最先进方法取得了显著的性能提升。系统采用了基于Wan2.2-I2V-A14B的扩散变换器架构，集成了混合专家机制和内存高效的长序列处理技术，支持分布式训练和多模式推理部署。需要说明的是，为满足学术发表的公开性要求，论文中部分技术细节已进行适当处理。研究成果为高保真场景重建技术在自动驾驶仿真中的实际应用奠定了坚实的技术基础。
 
   % 关键词用"英文逗号"分隔，输出时会自动处理为正确的分隔符
   \thusetup{
@@ -16,11 +16,11 @@
 \end{abstract}
 
 \begin{abstract*}
-  As autonomous driving technology advances toward Level 5 full autonomy, high-fidelity scene reconstruction has become a critical technical foundation for large-scale simulation testing. However, existing neural scene representation methods exhibit significant performance degradation in novel view synthesis tasks, severely limiting their practical value in simulation systems. This thesis addresses the fundamental limitations of 4D Gaussian Splatting (4DGS) in novel view extrapolation by proposing StreetCrafter, a diffusion-prior-based guided optimization framework that systematically enhances 4DGS's view generalization capability by integrating the powerful generative priors of video diffusion models.
+  As autonomous driving technology advances toward Level 5 full autonomy, high-fidelity scene reconstruction has become a critical technical foundation for large-scale simulation testing. However, existing neural scene representation methods exhibit significant performance degradation in novel view synthesis tasks, severely limiting their practical value in simulation systems. This thesis addresses the fundamental limitations of 4D Gaussian Splatting (4DGS) in novel view extrapolation by proposing ReGen, a diffusion-prior-based guided optimization framework that systematically enhances 4DGS's view generalization capability by integrating the powerful generative priors of video diffusion models.
 
   The core contributions of this work are four-fold. First, we propose a training-free guidance mechanism that designs a dual-guidance strategy leveraging both geometric conditions and current rendering states, achieving more precise and stable supervision signal propagation. Second, we develop an adaptive sampling scheduling algorithm that dynamically adjusts the frequency and intensity of diffusion sampling based on the convergence state of the 4DGS model, significantly improving training efficiency and optimization quality. Third, we construct a multi-modal regularization framework that comprehensively considers geometric consistency, temporal coherence, and visual quality, ensuring the stability of the training process through synergistic regularization terms. Fourth, we design a five-layer decoupled system architecture comprising data processing, video diffusion model, 4D Gaussian splatting, differentiable rendering engine, and diffusion-supervised training layers, enabling modular decomposition and efficient implementation of complex algorithms.
 
-  We conduct comprehensive experiments on the Waymo Open Dataset, achieving significant performance improvements in novel view extrapolation compared to state-of-the-art methods. The system employs a Diffusion Transformer architecture based on Wan2.2-I2V-A14B, integrating Mixture-of-Experts mechanisms and memory-efficient long-sequence processing techniques, supporting distributed training and multi-mode inference deployment. The research outcomes establish a solid technical foundation for practical applications of high-fidelity scene reconstruction in autonomous driving simulation.
+  We conduct comprehensive experiments on the Waymo Open Dataset, achieving significant performance improvements in novel view extrapolation compared to state-of-the-art methods. The system employs a Diffusion Transformer architecture based on Wan2.2-I2V-A14B, integrating Mixture-of-Experts mechanisms and memory-efficient long-sequence processing techniques, supporting distributed training and multi-mode inference deployment. It should be noted that certain technical details have been appropriately adapted to meet the public disclosure requirements for academic publications. The research outcomes establish a solid technical foundation for practical applications of high-fidelity scene reconstruction in autonomous driving simulation.
 
   % Use comma as separator when inputting
   \thusetup{

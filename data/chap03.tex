@@ -2,7 +2,7 @@
 
 \chapter{基于扩散先验的4D高斯溅射增强方法}
 
-本章详细阐述了StreetCrafter系统的核心方法论。我们的方法旨在通过融合视频扩散模型的强大生成先验，来系统性地解决4D高斯溅射（4D Gaussian Splatting, 4DGS）在视点外推任务上的根本性局限。在深入具体方法前，本章首先介绍4DGS的基础理论框架，阐明其时间建模机制和渲染方程，然后从系统设计的整体视角介绍方法概览，最后深入各个技术组件的具体设计和实现细节。
+本章详细阐述了ReGen系统的核心方法论。我们的方法旨在通过融合视频扩散模型的强大生成先验，来系统性地解决4D高斯溅射（4D Gaussian Splatting, 4DGS）在视点外推任务上的根本性局限。在深入具体方法前，本章首先介绍4DGS的基础理论框架，阐明其时间建模机制和渲染方程，然后从系统设计的整体视角介绍方法概览，最后深入各个技术组件的具体设计和实现细节。
 
 \section{4D高斯溅射的基础理论}
 
@@ -160,14 +160,14 @@ T_i(u,v,t) = \prod_{j=1}^{i-1} (1 - \alpha_j(t) G_j(u,v,t))
 
 这种时间梯度流确保了学习到的动态模型在时间上的平滑性和一致性。
 
-理解4DGS的基础理论后，我们现在转向StreetCrafter系统的具体设计。在第~\ref{sec:method_overview}~节中，我们将介绍如何通过视频扩散模型生成高质量监督信号来增强4DGS的新视点泛化能力。
+理解4DGS的基础理论后，我们现在转向ReGen系统的具体设计。在第~\ref{sec:method_overview}~节中，我们将介绍如何通过视频扩散模型生成高质量监督信号来增强4DGS的新视点泛化能力。
 
 \section{方法概览与设计理念}
 \label{sec:method_overview}
 
 \subsection{技术演进与方法定位}
 
-在介绍StreetCrafter的具体设计之前，有必要阐述本文方法的形成过程和技术定位。研究工作经历了从NeRF到3DGS，再到基于扩散模型的4DGS的技术演进，每一阶段都针对前一阶段的核心局限进行了系统性改进。
+在介绍ReGen的具体设计之前，有必要阐述本文方法的形成过程和技术定位。研究工作经历了从NeRF到3DGS，再到基于扩散模型的4DGS的技术演进，每一阶段都针对前一阶段的核心局限进行了系统性改进。
 
 \textbf{阶段一：NeRF方法及其局限}
 
@@ -211,21 +211,18 @@ Diffusion-based 4DGS框架的关键设计包括：
 \centering
 \caption{技术路线演进对比}
 \label{tab:technical-evolution}
-\begin{tabular}{p{2.5cm}p{3.8cm}p{4.5cm}p{3cm}}
+\small
+\begin{tabular}{p{2.2cm}p{3.2cm}p{4cm}p{2.8cm}}
 \toprule
 \textbf{技术方法} & \textbf{核心优势} & \textbf{主要局限} & \textbf{关键发现} \\
 \midrule
-NeRF & 连续表示，重建质量高 & 渲染3-5秒/帧；大场景扩展性差；动态建模困难 & 隐式表示不适合实时动态场景 \\
+NeRF & 连续表示，质量高 & 渲染慢（3-5秒/帧）；扩展性差；动态建模难 & 不适合实时动态场景 \\
 \midrule
-3DGS & 实时渲染（>100 FPS），动静分离有效 & 视点外推能力弱；几何扭曲和伪影；缺乏先验 & 显式表示需引入生成先验 \\
+3DGS & 实时渲染（>100 FPS），有效动静分离 & 视点外推弱；几何扭曲；缺乏先验 & 需引入生成先验 \\
 \midrule
-3DGS+Diffusion\\（简单融合） & 初步引入扩散先验 & 直接叠加效果有限；训练不稳定 & 需系统性融合设计 \\
+3DGS + Diffusion & 初步引入先验 & 效果有限；不稳定 & 需系统性设计 \\
 \midrule
-\textbf{Diffusion-based}\\
-\textbf{4DGS（本文）} & \textbf{先验增强的}\\
-\textbf{高效渲染} & \textbf{两阶段训练；}\\
-\textbf{系统复杂度较高} & \textbf{先验与效率的}\\
-\textbf{有效平衡} \\
+\textbf{Diffusion-based 4DGS} & \textbf{先验增强+高效渲染} & \textbf{两阶段训练} & \textbf{先验与效率平衡} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -234,7 +231,7 @@ NeRF & 连续表示，重建质量高 & 渲染3-5秒/帧；大场景扩展性差
 
 \subsection{整体框架设计}
 
-StreetCrafter的核心设计理念是利用强大但计算昂贵的视频扩散模型生成高质量监督信号，引导高效但泛化能力有限的4D高斯溅射进行优化，实现两者的优势互补。整个框架分为两个主要阶段：
+ReGen的核心设计理念是利用强大但计算昂贵的视频扩散模型生成高质量监督信号，引导高效但泛化能力有限的4D高斯溅射进行优化，实现两者的优势互补。整个框架分为两个主要阶段：
 
 \textbf{阶段1：可控视频扩散模型预训练}
 在大规模驾驶数据上训练一个以LiDAR几何条件为引导的视频扩散模型。该模型学习从稀疏的几何信息（LiDAR点云渲染）生成高质量、时间连贯的驾驶视频。
@@ -250,7 +247,7 @@ StreetCrafter的核心设计理念是利用强大但计算昂贵的视频扩散�
 
 \textbf{输入数据类型：}
 \begin{itemize}
-\item \textbf{RGB图像序列}：来自Waymo的5个相机（前、左前、右前、左、右），提供视觉真值
+\item \textbf{RGB图像序列}：来自多视角相机的图像序列，提供视觉真值
 \item \textbf{LiDAR点云}：64线激光雷达数据，提供几何约束和深度监督
 \item \textbf{物体轨迹}：3D边界框序列，用于动静分离和物体跟踪
 \item \textbf{相机标定}：内外参数，确保几何一致性
@@ -442,7 +439,7 @@ masks, _, _ = sam_predictor.predict_torch(
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=0.95\textwidth]{pdf/training_pipeline.pdf}
-  \caption{StreetCrafter训练流程序列图}
+  \caption{ReGen训练流程序列图}
   \label{fig:training-pipeline}
 \end{figure}
 
@@ -521,7 +518,7 @@ masks, _, _ = sam_predictor.predict_torch(
 
 \subsection{训练自由引导机制}
 
-我们提出的训练自由引导机制是StreetCrafter的核心创新之一。与传统的分类器自由引导不同，我们同时使用几何条件和当前4DGS渲染结果作为引导信号：
+我们提出的训练自由引导机制是ReGen的核心创新之一。与传统的分类器自由引导不同，我们同时使用几何条件和当前4DGS渲染结果作为引导信号：
 
 \begin{equation}
 \epsilon_{\text{guided}} = \epsilon_{\text{uncond}} + w_{\text{geom}} \cdot (\epsilon_{\text{geom}} - \epsilon_{\text{uncond}}) + w_{\text{render}} \cdot (\epsilon_{\text{render}} - \epsilon_{\text{uncond}})
@@ -622,7 +619,7 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 
 \subsection{自适应密化的智能策略}
 
-传统3DGS的密化策略在动态场景中面临挑战。我们提出了时间感知的自适应密化策略：
+传统3DGS的密化策略在动态场景中面临挑战。我们提出了针对动态场景的自适应密化策略：
 
 \begin{figure}[htbp]
   \centering
@@ -632,39 +629,37 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 \end{figure}
 
 \begin{algorithm}
-\caption{时间感知的4D高斯密化算法}
-\label{alg:temporal_aware_densification}
+\caption{4D高斯自适应密化算法}
+\label{alg:adaptive_densification}
 \begin{algorithmic}[1]
-\REQUIRE 当前高斯集合$\mathcal{G}$，时间窗口$[t-\Delta t, t+\Delta t]$
-\ENSURE 更新后的高斯集合$\mathcal{G}'$
+\REQUIRE 高斯集合$\mathcal{G}$，观测序列$\mathcal{O}$
+\ENSURE 优化后的高斯集合$\mathcal{G}^*$
 
-\STATE \textbf{Step 1: 时间聚合梯度统计}
-\FOR{每个高斯基元 $g_i \in \mathcal{G}$}
-    \STATE $\mathbf{g}_i^{\text{temporal}} = \frac{1}{|\mathcal{T}_{\text{visible}}|} \sum_{t \in \mathcal{T}_{\text{visible}}} \nabla_{\boldsymbol{\mu}_i} \mathcal{L}(t)$
+\STATE \textbf{阶段1: 质量评估}
+\FOR{每个高斯基元 $\mathcal{G}_i \in \mathcal{G}$}
+    \STATE 计算重建质量指标：$\mathbf{Q}_i = f_{\text{eval}}(\mathcal{G}_i, \mathcal{O})$
+    \STATE 评估几何合理性：$\mathbf{V}_i = g_{\text{geom}}(\mathcal{G}_i)$
 \ENDFOR
 
-\STATE \textbf{Step 2: 几何特征分析}
-\FOR{每个高斯基元 $g_i \in \mathcal{G}$}
-    \STATE 计算最大尺度：$s_{\max,i} = \max(\mathbf{s}_i)$
-    \STATE 计算屏幕投影大小：$r_{\text{screen},i} = \text{ProjectedRadius}(\mathbf{s}_i, \mathbf{T}_{\text{cam}})$
-\ENDFOR
-
-\STATE \textbf{Step 3: 智能密化决策}
-\FOR{每个高斯基元 $g_i \in \mathcal{G}$}
-    \IF{$\|\mathbf{g}_i^{\text{temporal}}\| > \tau_{\text{grad}}$}
-        \IF{$s_{\max,i} > \tau_{\text{scale}}$ AND $r_{\text{screen},i} > \tau_{\text{screen}}$}
-            \STATE 执行分裂：$\boldsymbol{\mu}_{\text{new}} = \boldsymbol{\mu}_i \pm \frac{\mathbf{s}_i}{4}$
+\STATE \textbf{阶段2: 密化操作}
+\FOR{每个高斯基元 $\mathcal{G}_i$}
+    \IF{$\mathbf{Q}_i$ 低于质量阈值}
+        \IF{满足分裂条件}
+            \STATE 执行分裂操作生成子高斯
         \ELSE
-            \STATE 执行克隆：$\boldsymbol{\mu}_{\text{new}} = \boldsymbol{\mu}_i + \mathcal{N}(0, \sigma_{\text{clone}}^2)$
+            \STATE 执行复制操作增加密度
         \ENDIF
     \ENDIF
-    
-    \IF{$\alpha_i < \tau_{\text{opacity}}$ OR $s_{\max,i} > \tau_{\text{prune}}$ OR $r_{\text{screen},i} > r_{\text{max}}$}
-        \STATE 执行剪枝：$\mathcal{G} \leftarrow \mathcal{G} \setminus \{g_i\}$
+\ENDFOR
+
+\STATE \textbf{阶段3: 剪枝优化}
+\FOR{每个高斯基元 $\mathcal{G}_i$}
+    \IF{$\mathbf{V}_i$ 不满足几何约束 OR 贡献度过低}
+        \STATE 从集合中移除该高斯基元
     \ENDIF
 \ENDFOR
 
-\RETURN $\mathcal{G}'$
+\RETURN $\mathcal{G}^*$
 \end{algorithmic}
 \end{algorithm}
 
@@ -800,7 +795,7 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 
 \section{本章小结}
 
-本章从4DGS的基础理论出发，系统性地阐述了StreetCrafter的核心方法论。我们首先介绍了4D高斯溅射的数学表示、时间建模机制和渲染方程，为理解后续方法奠定了理论基础。
+本章从4DGS的基础理论出发，系统性地阐述了ReGen的核心方法论。我们首先介绍了4D高斯溅射的数学表示、时间建模机制和渲染方程，为理解后续方法奠定了理论基础。
 
 在方法设计层面，我们提出了双阶段扩散监督框架，利用视频扩散模型生成高质量监督信号来引导4DGS的优化训练。通过LiDAR几何条件的多层次利用、智能天空处理和精心设计的分阶段训练策略，系统实现了几何一致性和视觉质量的平衡。
 
