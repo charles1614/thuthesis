@@ -2,21 +2,247 @@
 
 \chapter{基于扩散先验的4D高斯溅射增强方法}
 
-本章详细阐述了StreetCrafter系统的核心方法论。我们的方法旨在通过融合视频扩散模型的强大生成先验，来系统性地解决4D高斯溅射在视点外推任务上的根本性局限。本章首先从系统设计的整体视角介绍方法概览，然后深入各个技术组件的具体设计和实现细节。
+本章详细阐述了StreetCrafter系统的核心方法论。我们的方法旨在通过融合视频扩散模型的强大生成先验，来系统性地解决4D高斯溅射（4D Gaussian Splatting, 4DGS）在视点外推任务上的根本性局限。在深入具体方法前，本章首先介绍4DGS的基础理论框架，阐明其时间建模机制和渲染方程，然后从系统设计的整体视角介绍方法概览，最后深入各个技术组件的具体设计和实现细节。
+
+\section{4D高斯溅射的基础理论}
+
+\subsection{4D表示的数学含义}
+
+4D高斯溅射（4DGS）是3D高斯溅射（3DGS）在时间维度上的扩展。"4D"指的是三维空间加上一维时间，即$\mathbb{R}^3 \times \mathbb{R}$。与静态的3DGS不同，4DGS需要建模场景中的动态变化，包括物体的运动、形状的变形以及外观的变化。
+
+\textbf{4D高斯基元的参数化表示：}
+
+一个4D高斯基元在时刻$t$可以用以下参数集合表示：
+
+\begin{equation}
+\mathcal{G}_{4D} = \left\{(\boldsymbol{\mu}_i(t), \mathbf{s}_i(t), \mathbf{q}_i(t), \alpha_i(t), \mathbf{c}_i(t, \mathbf{d}))\right\}_{i=1}^{N}
+\label{eq:4dgs_parameterization}
+\end{equation}
+
+其中：
+\begin{itemize}
+\item $\boldsymbol{\mu}_i(t) \in \mathbb{R}^3$：时变的3D位置（中心点）
+\item $\mathbf{s}_i(t) \in \mathbb{R}^3_+$：时变的尺度参数（椭球三轴长度）
+\item $\mathbf{q}_i(t) \in \mathbb{S}^3$：时变的旋转四元数
+\item $\alpha_i(t) \in [0,1]$：时变的不透明度
+\item $\mathbf{c}_i(t, \mathbf{d}) \in \mathbb{R}^3$：时变的颜色，通常使用球谐函数（Spherical Harmonics）编码视角依赖性
+\end{itemize}
+
+\textbf{随时间变化的属性：}
+
+不同于静态3DGS的固定参数，4DGS的所有参数都可能随时间变化：
+
+\begin{itemize}
+\item \textbf{位置轨迹} $\boldsymbol{\mu}_i(t)$：描述高斯基元在3D空间中的运动轨迹，对于动态物体（如车辆、行人）尤为重要
+\item \textbf{尺度演化} $\mathbf{s}_i(t)$：反映物体尺寸的变化，例如车辆的接近或远离导致的视觉尺度变化
+\item \textbf{旋转动态} $\mathbf{q}_i(t)$：捕捉物体的旋转运动，如转向的车辆或旋转的物体
+\item \textbf{不透明度变化} $\alpha_i(t)$：建模物体的出现、消失以及遮挡关系的变化
+\item \textbf{颜色变化} $\mathbf{c}_i(t, \mathbf{d})$：表示光照条件、材质反射等外观属性的时间演化
+\end{itemize}
+
+\textbf{静态与动态的分离表示：}
+
+在自动驾驶场景中，通常将场景分解为静态背景和动态物体。静态背景的高斯参数不随时间变化（即$\frac{\partial}{\partial t} = 0$），而动态物体的高斯参数则需要显式建模时间依赖性。这种分离策略降低了模型复杂度，提高了训练效率。
+
+\subsection{时间建模机制}
+
+时间建模是4DGS的核心挑战。现有方法主要有以下几种时间表示策略：
+
+\textbf{基于变形的方法：}
+
+最直接的方式是对每个高斯基元的参数建模其相对于参考时刻（通常是$t=0$）的变形：
+
+\begin{align}
+\boldsymbol{\mu}_i(t) &= \boldsymbol{\mu}_i^{(0)} + \Delta\boldsymbol{\mu}_i(t) \label{eq:deformation_position} \\
+\mathbf{s}_i(t) &= \mathbf{s}_i^{(0)} \odot \exp(\Delta\mathbf{s}_i(t)) \label{eq:deformation_scale} \\
+\mathbf{q}_i(t) &= \mathbf{q}_i^{(0)} \otimes \Delta\mathbf{q}_i(t) \label{eq:deformation_rotation}
+\end{align}
+
+其中$\Delta\boldsymbol{\mu}_i(t)$, $\Delta\mathbf{s}_i(t)$, $\Delta\mathbf{q}_i(t)$分别是位置、尺度和旋转的变形量，可以通过时间嵌入网络或时间条件的MLP预测：
+
+\begin{equation}
+[\Delta\boldsymbol{\mu}_i(t), \Delta\mathbf{s}_i(t), \Delta\mathbf{q}_i(t)] = \mathcal{D}_{\text{deform}}(t, \boldsymbol{\theta}_i)
+\label{eq:deformation_network}
+\end{equation}
+
+\textbf{基于轨迹的方法：}
+
+对于物体级别的运动，可以显式建模其刚体变换轨迹。给定物体在时刻$t$的SE(3)变换$\mathbf{T}_{\text{obj}}(t) \in SE(3)$，物体上的高斯基元相应变换：
+
+\begin{equation}
+\boldsymbol{\mu}_i(t) = \mathbf{T}_{\text{obj}}(t) \circ \boldsymbol{\mu}_i^{\text{local}}
+\label{eq:trajectory_based_position}
+\end{equation}
+
+物体轨迹$\mathbf{T}_{\text{obj}}(t)$可以通过跟踪算法获得，或使用参数化轨迹模型（如B样条、Bézier曲线）表示。
+
+\textbf{基于特征的方法：}
+
+使用学习的时间特征编码来隐式建模时间依赖性。每个时间步$t$被映射到一个特征向量$\mathbf{f}_t \in \mathbb{R}^d$，高斯参数通过该特征调制：
+
+\begin{equation}
+\boldsymbol{\mu}_i(t) = \boldsymbol{\mu}_i^{(0)} + \text{MLP}(\mathbf{f}_t, \boldsymbol{\theta}_i)
+\label{eq:feature_based_modulation}
+\end{equation}
+
+\textbf{时间插值与外推：}
+
+4DGS的一个关键能力是在未观测时刻进行插值（$t \in [t_{\min}, t_{\max}]$）和外推（$t < t_{\min}$ 或 $t > t_{\max}$）。基于变形的方法通常具有较好的插值能力，因为MLP可以学习平滑的时间函数。然而，外推能力受限于训练数据的时间范围。基于轨迹的方法通过显式的运动模型（如匀速、匀加速）可以实现一定程度的外推，但灵活性较低。
+
+\subsection{4DGS渲染方程}
+
+给定相机参数和时刻$t$，4DGS的渲染过程与3DGS类似，但需要在查询时刻对所有高斯参数进行求值。
+
+\textbf{时间相关的渲染方程：}
+
+对于像素$(u,v)$，其颜色由沿相机射线排序的高斯基元混合得到：
+
+\begin{equation}
+\mathbf{C}(u,v,t) = \sum_{i \in \mathcal{N}(u,v,t)} \mathbf{c}_i(t, \mathbf{d}) \alpha_i(t) T_i(u,v,t) G_i(u,v,t)
+\label{eq:4dgs_rendering}
+\end{equation}
+
+其中：
+\begin{itemize}
+\item $\mathcal{N}(u,v,t)$：在时刻$t$对像素$(u,v)$有贡献的高斯基元集合
+\item $\mathbf{c}_i(t, \mathbf{d})$：高斯基元$i$在时刻$t$沿视角方向$\mathbf{d}$的颜色
+\item $\alpha_i(t)$：高斯基元$i$在时刻$t$的不透明度
+\item $G_i(u,v,t)$：3D高斯函数在像素$(u,v)$处的投影值
+\item $T_i(u,v,t)$：累积透射率
+\end{itemize}
+
+\textbf{3D高斯函数的投影：}
+
+在时刻$t$，高斯基元$i$的3D高斯分布为：
+
+\begin{equation}
+G_i(\mathbf{x}, t) = \exp\left(-\frac{1}{2}(\mathbf{x} - \boldsymbol{\mu}_i(t))^T \Sigma_i^{-1}(t) (\mathbf{x} - \boldsymbol{\mu}_i(t))\right)
+\label{eq:3d_gaussian}
+\end{equation}
+
+其中协方差矩阵$\Sigma_i(t)$由尺度和旋转参数构造：
+
+\begin{equation}
+\Sigma_i(t) = \mathbf{R}_i(t) \mathbf{S}_i(t) \mathbf{S}_i(t)^T \mathbf{R}_i(t)^T
+\label{eq:covariance_matrix}
+\end{equation}
+
+其中$\mathbf{R}_i(t) \in SO(3)$是旋转矩阵（由四元数$\mathbf{q}_i(t)$转换得到），$\mathbf{S}_i(t) = \text{diag}(\mathbf{s}_i(t))$是尺度矩阵。
+
+投影到2D图像平面时，使用EWA（Elliptical Weighted Average）splatting技术，得到2D高斯：
+
+\begin{equation}
+G_i(u,v,t) = \exp\left(-\frac{1}{2}\boldsymbol{\delta}_{i,t}^T \Sigma'_i{}^{-1}(t) \boldsymbol{\delta}_{i,t}\right)
+\label{eq:2d_gaussian_projection}
+\end{equation}
+
+其中$\boldsymbol{\delta}_{i,t} = [(u,v) - \pi(\boldsymbol{\mu}_i(t))]^T$是像素位置到投影中心的偏移，$\pi(\cdot)$是3D到2D的投影函数，$\Sigma'_i(t)$是投影后的2D协方差矩阵。
+
+\textbf{累积透射率的计算：}
+
+累积透射率$T_i(u,v,t)$表示光线到达高斯基元$i$之前未被前面的高斯基元完全遮挡的概率：
+
+\begin{equation}
+T_i(u,v,t) = \prod_{j=1}^{i-1} (1 - \alpha_j(t) G_j(u,v,t))
+\label{eq:transmittance}
+\end{equation}
+
+这要求高斯基元按照深度从近到远排序。在时刻$t$，排序依据是高斯中心$\boldsymbol{\mu}_i(t)$到相机的距离。
+
+\textbf{可微性与时间梯度流：}
+
+4DGS渲染是完全可微的，可以通过反向传播计算损失相对于所有高斯参数的梯度。关键的是，时间参数化使得梯度可以沿时间流动，从而学习时间一致的动态表示。时间梯度为：
+
+\begin{equation}
+\frac{\partial \mathcal{L}}{\partial \boldsymbol{\mu}_i^{(0)}} = \sum_{t \in \mathcal{T}} \frac{\partial \mathcal{L}(t)}{\partial \mathbf{C}(t)} \frac{\partial \mathbf{C}(t)}{\partial \boldsymbol{\mu}_i(t)} \frac{\partial \boldsymbol{\mu}_i(t)}{\partial \boldsymbol{\mu}_i^{(0)}}
+\label{eq:temporal_gradient}
+\end{equation}
+
+这种时间梯度流确保了学习到的动态模型在时间上的平滑性和一致性。
+
+理解4DGS的基础理论后，我们现在转向StreetCrafter系统的具体设计。在第~\ref{sec:method_overview}~节中，我们将介绍如何通过视频扩散模型生成高质量监督信号来增强4DGS的新视点泛化能力。
 
 \section{方法概览与设计理念}
+\label{sec:method_overview}
+
+\subsection{技术演进与方法定位}
+
+在介绍StreetCrafter的具体设计之前，有必要阐述本文方法的形成过程和技术定位。研究工作经历了从NeRF到3DGS，再到基于扩散模型的4DGS的技术演进，每一阶段都针对前一阶段的核心局限进行了系统性改进。
+
+\textbf{阶段一：NeRF方法及其局限}
+
+NeRF的连续函数表示理论上可以提供任意分辨率的渲染结果，这对于需要多尺度观察的自动驾驶仿真具有吸引力。然而，实际应用中暴露出三个根本性局限：
+
+\begin{itemize}
+\item \textbf{计算复杂度}：每个像素的渲染需要沿光线进行64-256次采样并执行神经网络前向传播，渲染单张$1920 \times 1280$图像需要3-5秒，与实时仿真要求（$\geq$30 FPS）存在两个数量级差距。
+\item \textbf{可扩展性}：单一MLP网络的表达容量有限，难以编码跨越数公里范围的城市级场景。即使采用Block-NeRF分块策略，也面临模型管理和边界衔接的复杂性。
+\item \textbf{动态建模}：NeRF的静态场景假设与自动驾驶环境的动态本质存在矛盾，基于形变场的扩展方法难以处理多物体独立运动和物体出现消失的情况。
+\end{itemize}
+
+\textbf{阶段二：3DGS方法的突破与新挑战}
+
+3D Gaussian Splatting的显式点云表示带来了实质性突破——渲染速度提升至100+ FPS，实现了实时仿真。通过动静分离策略，能够有效处理动态驾驶场景重建。
+
+然而，3DGS在视点外推任务中暴露出严重缺陷。从训练数据未覆盖的新视角（如换道轨迹、俯视视角）渲染时，图像质量急剧下降，出现几何扭曲、物体缺失和视觉伪影。分析表明：
+
+\begin{itemize}
+\item \textbf{过拟合训练视点}：优化目标导致高斯基元排布特化于训练视角，缺乏全局几何一致性约束。
+\item \textbf{离散表示的插值局限}：离散点云在空间稀疏区域缺乏有效补全机制。
+\item \textbf{先验知识缺失}：纯数据驱动学习缺乏对场景结构的内在理解。
+\end{itemize}
+
+单纯依靠几何优化无法解决泛化问题，需引入生成先验。
+
+\textbf{阶段三：Diffusion-based 4DGS方法}
+
+扩散模型在大规模预训练中内隐学习了丰富的视觉先验，包括场景结构合理性、物体外观一致性和光照真实性。关键思路是利用扩散模型为未覆盖视角生成高质量"伪真值"作为监督信号，引导4DGS训练。
+
+核心挑战在于几何可控性——无条件生成会导致几何不可控。因此采用LiDAR几何作为条件：LiDAR提供稀疏但准确的3D骨架，扩散模型填充视觉细节。
+
+Diffusion-based 4DGS框架的关键设计包括：
+
+\begin{itemize}
+\item \textbf{几何条件编码}：将LiDAR点云渲染为深度图并编码为RGB通道，既保留几何信息又与扩散模型输入格式兼容。
+\item \textbf{训练推理解耦}：扩散模型仅在训练阶段生成监督信号，推理时完全依赖已优化的4DGS，实现先验增强与部署效率的平衡。
+\item \textbf{自适应监督策略}：通过训练自由引导和自适应采样调度，实现监督强度随训练进程动态调整，避免训练不稳定。
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{技术路线演进对比}
+\label{tab:technical-evolution}
+\begin{tabular}{p{2.5cm}p{3.8cm}p{4.5cm}p{3cm}}
+\toprule
+\textbf{技术方法} & \textbf{核心优势} & \textbf{主要局限} & \textbf{关键发现} \\
+\midrule
+NeRF & 连续表示，重建质量高 & 渲染3-5秒/帧；大场景扩展性差；动态建模困难 & 隐式表示不适合实时动态场景 \\
+\midrule
+3DGS & 实时渲染（>100 FPS），动静分离有效 & 视点外推能力弱；几何扭曲和伪影；缺乏先验 & 显式表示需引入生成先验 \\
+\midrule
+3DGS+Diffusion\\（简单融合） & 初步引入扩散先验 & 直接叠加效果有限；训练不稳定 & 需系统性融合设计 \\
+\midrule
+\textbf{Diffusion-based}\\
+\textbf{4DGS（本文）} & \textbf{先验增强的}\\
+\textbf{高效渲染} & \textbf{两阶段训练；}\\
+\textbf{系统复杂度较高} & \textbf{先验与效率的}\\
+\textbf{有效平衡} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+这一技术演进表明，高保真场景重建需要同时解决效率和泛化两个核心问题。本文方法通过扩散监督框架实现了生成先验与渲染效率的有机融合：扩散模型在训练阶段提供高质量监督信号，4DGS在推理阶段实现实时高效渲染。这一设计为理解后续具体方法提供了必要的技术背景。
 
 \subsection{整体框架设计}
 
-StreetCrafter的核心设计理念是将强大但计算昂贵的视频扩散模型作为"教师"，将高效但泛化能力有限的4D高斯溅射作为"学生"，通过知识蒸馏实现两者的优势互补。整个框架分为两个主要阶段：
+StreetCrafter的核心设计理念是利用强大但计算昂贵的视频扩散模型生成高质量监督信号，引导高效但泛化能力有限的4D高斯溅射进行优化，实现两者的优势互补。整个框架分为两个主要阶段：
 
 \textbf{阶段1：可控视频扩散模型预训练}
 在大规模驾驶数据上训练一个以LiDAR几何条件为引导的视频扩散模型。该模型学习从稀疏的几何信息（LiDAR点云渲染）生成高质量、时间连贯的驾驶视频。
 
-\textbf{阶段2：4DGS知识蒸馏优化}
+\textbf{阶段2：4DGS扩散监督优化}
 利用预训练的扩散模型为新视点生成高质量的"伪真值"图像，以此作为监督信号指导4DGS模型的训练，从而提升其视点外推能力。
 
-这种设计的核心优势在于：（1）扩散模型提供了强大的视觉先验和生成能力；（2）4DGS保持了实时渲染的效率；（3）知识蒸馏桥接了两者，实现了"鱼与熊掌兼得"。
+这种设计的核心优势在于：（1）扩散模型提供了强大的视觉先验和生成能力；（2）4DGS保持了实时渲染的效率；（3）扩散生成的监督信号桥接了两者，实现了"鱼与熊掌兼得"。
 
 \subsection{数据流与训练策略概览}
 
@@ -40,7 +266,9 @@ StreetCrafter的核心设计理念是将强大但计算昂贵的视频扩散模�
 \item \textbf{4DGS联合训练}：同时使用真实图像和扩散生成的伪真值训练4DGS
 \end{enumerate}
 
-\section{LiDAR几何条件的设计与使用}
+\section{几何与条件控制}
+
+本节介绍系统中几何信息的利用和条件控制机制，包括LiDAR数据的多层次处理、天空区域的智能分割，以及可控视频扩散模型的设计。
 
 \subsection{LiDAR数据的多层次利用}
 
@@ -107,9 +335,7 @@ LiDAR提供的稀疏深度用于约束4DGS的几何重建：
 
 这种分离策略的优势在于：（1）静态背景可以跨时间聚合，提高密度；（2）动态物体保持时间独立性，避免运动模糊；（3）支持物体级别的编辑和控制。
 
-\section{天空区域的智能处理机制}
-
-\subsection{基于Grounding DINO + SAM的天空分割}
+\subsection{天空区域的智能处理}
 
 天空区域在自动驾驶场景中具有特殊性：它缺乏明确的几何结构，且在不同视点下变化复杂。我们采用了基于视觉语言模型的智能分割策略：
 
@@ -121,7 +347,18 @@ LiDAR提供的稀疏深度用于约束4DGS的几何重建：
 
 具体实现中，我们使用以下策略确保天空检测的准确性：
 
-\begin{verbatim}
+\begin{figure}[!b]
+  \begin{tmpbox}
+    \lstset{
+      basicstyle=\fontsize{10}{11}\ttfamily, 
+      numbersep=5pt, 
+      columns=flexible, 
+      captionpos=t,
+      numbers=left,
+      numberstyle=\tiny\ttfamily,
+      breaklines=true,
+    }
+    \begin{lstlisting}[language=Python]
 # Sky detection with spatial constraints
 boxes_mask = boxes_xyxy[:, 1] < 100  # Top 100 pixels only
 valid_boxes = boxes_xyxy[boxes_mask]
@@ -135,7 +372,11 @@ masks, _, _ = sam_predictor.predict_torch(
     boxes=transformed_boxes,
     multimask_output=False
 )
-\end{verbatim}
+\end{lstlisting}
+  \end{tmpbox}
+  \caption{天空检测实现}
+  \label{fig:sky-detection-code}
+\end{figure}
 
 \textbf{天空区域的三种表示策略：}
 
@@ -143,7 +384,7 @@ masks, _, _ = sam_predictor.predict_torch(
 2. \textbf{立方体贴图}：使用环境贴图表示天空，计算效率高但表达能力有限
 3. \textbf{背景集成}：将天空直接集成到背景高斯模型中，适用于天空区域较小的场景
 
-\subsection{天空损失的设计原理}
+\textbf{天空损失的设计原理：}
 
 针对天空区域的特殊性质，我们设计了基于不透明度分布的天空损失：
 
@@ -156,7 +397,54 @@ masks, _, _ = sam_predictor.predict_torch(
 - 天空区域的低不透明度（$\alpha \rightarrow 0$）
 - 非天空区域的确定性不透明度（$\alpha \rightarrow 0$ 或 $\alpha \rightarrow 1$）
 
-\section{训练流程的系统性设计}
+\subsection{可控视频扩散模型设计}
+
+我们的视频扩散模型采用了多层次的条件控制机制，确保生成内容的几何一致性和视觉质量：
+
+\textbf{像素级几何条件}：LiDAR渲染的RGB-D图像提供逐像素的几何约束
+\textbf{全局场景条件}：相机参数和场景元数据提供全局上下文
+\textbf{时间条件}：帧索引和时间戳确保时间连贯性
+
+条件编码过程可以表示为：
+
+\begin{align}
+\mathbf{h}_{\text{pixel}} &= \text{Conv2D}(\mathbf{C}_{\text{lidar}}) \\
+\mathbf{h}_{\text{global}} &= \text{MLP}([\mathbf{K}; \mathbf{T}; t]) \\
+\mathbf{h}_{\text{cond}} &= \text{CrossAttention}(\mathbf{h}_{\text{pixel}}, \mathbf{h}_{\text{global}})
+\label{eq:condition_encoding_multilevel}
+\end{align}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pdf/diffusion_architecture.pdf}
+  \caption{可控视频扩散模型架构}
+  \label{fig:diffusion-architecture}
+\end{figure}
+
+\textbf{时空注意力机制：}
+
+为了确保生成视频的时间连贯性，我们设计了分解式时空注意力机制：
+
+\begin{equation}
+\text{SpatioTemporalAttention}(\mathbf{X}) = \text{TemporalAttention}(\text{SpatialAttention}(\mathbf{X}))
+\label{eq:factorized_attention}
+\end{equation}
+
+这种分解设计的优势：
+- 计算复杂度从$O(T^2H^2W^2)$降低到$O(TH^2W^2 + T^2HW)$
+- 更好地建模空间和时间的不同特性
+- 支持不同分辨率的高效处理
+
+\section{训练流程与扩散监督}
+
+本节详细介绍分阶段训练策略、训练自由引导机制以及新视点轨迹的生成方法。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pdf/training_pipeline.pdf}
+  \caption{StreetCrafter训练流程序列图}
+  \label{fig:training-pipeline}
+\end{figure}
 
 \subsection{分阶段训练策略}
 
@@ -203,7 +491,7 @@ masks, _, _ = sam_predictor.predict_torch(
 - 球谐函数递增：每1000次迭代增加球谐函数阶数
 - 不透明度重置：每3000次迭代重置低质量高斯基元
 
-\textbf{阶段3：扩散蒸馏训练（7000-30000次迭代）}
+\textbf{阶段3：扩散监督训练（7000-30000次迭代）}
 
 \textbf{数据需求：}
 \begin{itemize}
@@ -215,14 +503,61 @@ masks, _, _ = sam_predictor.predict_torch(
 
 \textbf{训练目标：}
 \begin{equation}
-\mathcal{L}_{\text{distill}} = \mathcal{L}_{\text{recon}} + \lambda_{\text{novel}} \mathcal{L}_{\text{novel}} + \lambda_{\text{reg}} \mathcal{L}_{\text{reg}}
-\label{eq:distillation_training}
+\mathcal{L}_{\text{train}} = \mathcal{L}_{\text{recon}} + \lambda_{\text{novel}} \mathcal{L}_{\text{novel}} + \lambda_{\text{reg}} \mathcal{L}_{\text{reg}}
+\label{eq:diffusion_supervised_training}
 \end{equation}
 
 \textbf{关键策略：}
 - 渐进式采样：在特定迭代点（7000, 12000, 17000, 22000）进行扩散采样
 - 引导强度衰减：从强引导（$s=0.7$）逐渐减弱到弱引导（$s=0.3$）
 - 掩码引导：在15000次迭代后启用，只在渲染质量差的区域应用扩散监督
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pdf/knowledge_distillation.pdf}
+  \caption{扩散监督框架}
+  \label{fig:diffusion-supervision}
+\end{figure}
+
+\subsection{训练自由引导机制}
+
+我们提出的训练自由引导机制是StreetCrafter的核心创新之一。与传统的分类器自由引导不同，我们同时使用几何条件和当前4DGS渲染结果作为引导信号：
+
+\begin{equation}
+\epsilon_{\text{guided}} = \epsilon_{\text{uncond}} + w_{\text{geom}} \cdot (\epsilon_{\text{geom}} - \epsilon_{\text{uncond}}) + w_{\text{render}} \cdot (\epsilon_{\text{render}} - \epsilon_{\text{uncond}})
+\label{eq:dual_guidance}
+\end{equation}
+
+其中：
+- $\epsilon_{\text{geom}}$：基于LiDAR几何条件的噪声预测
+- $\epsilon_{\text{render}}$：基于当前4DGS渲染结果的噪声预测
+- $w_{\text{geom}}, w_{\text{render}}$：自适应调整的引导权重
+
+\textbf{自适应权重调整：}
+\begin{align}
+w_{\text{geom}}(k) &= w_{\text{geom}}^{\text{init}} \cdot (1 + \cos(\pi k / K)) / 2 \\
+w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\text{decay}})
+\label{eq:adaptive_guidance_weights}
+\end{align}
+
+这种设计确保了训练初期的强几何约束和后期的精细调优。
+
+\textbf{掩码引导的精确控制：}
+
+在训练后期（>15000次迭代），我们引入掩码引导机制，只在渲染质量较差的区域应用扩散监督：
+
+\begin{equation}
+\mathbf{M}_{\text{guide}}(u,v) = \begin{cases}
+1, & \text{if } \|\mathbf{I}_{\text{render}}(u,v) - \mathbf{I}_{\text{ref}}(u,v)\|_2 > \tau_{\text{error}} \\
+0, & \text{otherwise}
+\end{cases}
+\label{eq:masked_guidance}
+\end{equation}
+
+这种策略的优势：
+- 避免在已经收敛的区域进行不必要的修正
+- 集中计算资源在最需要改进的区域
+- 防止过度拟合扩散模型的生成偏好
 
 \subsection{新视点轨迹的生成策略}
 
@@ -248,82 +583,9 @@ masks, _, _ = sam_predictor.predict_torch(
 
 这些新轨迹的LiDAR条件通过几何变换自动生成，确保了条件的几何一致性。
 
-\section{可控视频扩散模型的深度设计}
+\section{4DGS优化与正则化}
 
-\subsection{条件控制机制的多层次设计}
-
-我们的视频扩散模型采用了多层次的条件控制机制，确保生成内容的几何一致性和视觉质量：
-
-\textbf{像素级几何条件}：LiDAR渲染的RGB-D图像提供逐像素的几何约束
-\textbf{全局场景条件}：相机参数和场景元数据提供全局上下文
-\textbf{时间条件}：帧索引和时间戳确保时间连贯性
-
-条件编码过程可以表示为：
-
-\begin{align}
-\mathbf{h}_{\text{pixel}} &= \text{Conv2D}(\mathbf{C}_{\text{lidar}}) \\
-\mathbf{h}_{\text{global}} &= \text{MLP}([\mathbf{K}; \mathbf{T}; t]) \\
-\mathbf{h}_{\text{cond}} &= \text{CrossAttention}(\mathbf{h}_{\text{pixel}}, \mathbf{h}_{\text{global}})
-\label{eq:condition_encoding_multilevel}
-\end{align}
-
-\subsection{时空注意力的创新设计}
-
-为了确保生成视频的时间连贯性，我们设计了分解式时空注意力机制：
-
-\begin{equation}
-\text{SpatioTemporalAttention}(\mathbf{X}) = \text{TemporalAttention}(\text{SpatialAttention}(\mathbf{X}))
-\label{eq:factorized_attention}
-\end{equation}
-
-这种分解设计的优势：
-- 计算复杂度从$O(T^2H^2W^2)$降低到$O(TH^2W^2 + T^2HW)$
-- 更好地建模空间和时间的不同特性
-- 支持不同分辨率的高效处理
-
-\section{训练自由引导的创新机制}
-
-\subsection{双重引导策略}
-
-我们提出的训练自由引导机制是StreetCrafter的核心创新之一。与传统的分类器自由引导不同，我们同时使用几何条件和当前4DGS渲染结果作为引导信号：
-
-\begin{equation}
-\epsilon_{\text{guided}} = \epsilon_{\text{uncond}} + w_{\text{geom}} \cdot (\epsilon_{\text{geom}} - \epsilon_{\text{uncond}}) + w_{\text{render}} \cdot (\epsilon_{\text{render}} - \epsilon_{\text{uncond}})
-\label{eq:dual_guidance}
-\end{equation}
-
-其中：
-- $\epsilon_{\text{geom}}$：基于LiDAR几何条件的噪声预测
-- $\epsilon_{\text{render}}$：基于当前4DGS渲染结果的噪声预测
-- $w_{\text{geom}}, w_{\text{render}}$：自适应调整的引导权重
-
-\textbf{自适应权重调整：}
-\begin{align}
-w_{\text{geom}}(k) &= w_{\text{geom}}^{\text{init}} \cdot (1 + \cos(\pi k / K)) / 2 \\
-w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\text{decay}})
-\label{eq:adaptive_guidance_weights}
-\end{align}
-
-这种设计确保了训练初期的强几何约束和后期的精细调优。
-
-\subsection{掩码引导的精确控制}
-
-在训练后期（>15000次迭代），我们引入掩码引导机制，只在渲染质量较差的区域应用扩散监督：
-
-\begin{equation}
-\mathbf{M}_{\text{guide}}(u,v) = \begin{cases}
-1, & \text{if } \|\mathbf{I}_{\text{render}}(u,v) - \mathbf{I}_{\text{ref}}(u,v)\|_2 > \tau_{\text{error}} \\
-0, & \text{otherwise}
-\end{cases}
-\label{eq:masked_guidance}
-\end{equation}
-
-这种策略的优势：
-- 避免在已经收敛的区域进行不必要的修正
-- 集中计算资源在最需要改进的区域
-- 防止过度拟合扩散模型的生成偏好
-
-\section{4DGS增强优化的系统性方法}
+本节介绍多模态损失函数设计、自适应密化策略以及多种正则化约束，确保4DGS模型的重建质量和几何一致性。
 
 \subsection{多模态损失函数的协同设计}
 
@@ -344,10 +606,10 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 \label{eq:reconstruction_loss_detailed}
 \end{align}
 
-\textbf{新视点蒸馏损失}：基于扩散生成的伪真值
+\textbf{新视点监督损失}：基于扩散生成的伪真值
 \begin{equation}
 \mathcal{L}_{\text{novel}} = \|\mathbf{M}_{\text{upper}} \odot (\mathbf{I}_{\text{render}}^{\text{novel}} - \mathbf{I}_{\text{pseudo}})\|_1 + \lambda_{\text{novel\_ssim}} (1 - \text{SSIM}(\mathbf{I}_{\text{render}}^{\text{novel}}, \mathbf{I}_{\text{pseudo}}, \mathbf{M}_{\text{upper}}))
-\label{eq:novel_distillation_loss}
+\label{eq:novel_supervision_loss}
 \end{equation}
 
 其中$\mathbf{M}_{\text{upper}}$排除图像上半部分，避免天空区域的不稳定性。
@@ -361,6 +623,13 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 \subsection{自适应密化的智能策略}
 
 传统3DGS的密化策略在动态场景中面临挑战。我们提出了时间感知的自适应密化策略：
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pdf/gaussian_densification.pdf}
+  \caption{自适应高斯密化算法流程}
+  \label{fig:gaussian-densification}
+\end{figure}
 
 \begin{algorithm}
 \caption{时间感知的4D高斯密化算法}
@@ -399,62 +668,6 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 \end{algorithmic}
 \end{algorithm}
 
-\section{系统训练的完整数据依赖图}
-
-\subsection{数据流向分析}
-
-整个训练过程的数据依赖关系可以用以下流向图表示：
-
-\textbf{原始数据 → 预处理数据：}
-\begin{itemize}
-\item Waymo TFRecord → RGB图像序列 + LiDAR点云 + 物体轨迹 + 相机标定
-\item RGB图像 + Grounding DINO + SAM → 天空掩码
-\item LiDAR点云 + RGB图像 → 彩色点云
-\item 彩色点云 + 相机参数 → LiDAR条件图像（RGB-D）
-\end{itemize}
-
-\textbf{预处理数据 → 训练数据：}
-\begin{itemize}
-\item RGB序列 + LiDAR条件 → 扩散模型训练对
-\item 彩色点云 + 物体轨迹 → 4DGS初始化
-\item 原始轨迹 + 几何变换 → 新视点轨迹
-\item 新视点轨迹 + LiDAR条件 → 扩散采样输入
-\end{itemize}
-
-\textbf{训练数据 → 监督信号：}
-\begin{itemize}
-\item 真实RGB图像 → 重建损失监督
-\item LiDAR深度 → 几何一致性监督  
-\item 扩散生成图像 → 新视点蒸馏监督
-\item 天空掩码 → 天空区域损失监督
-\end{itemize}
-
-\subsection{训练调度的精确设计}
-
-我们的训练调度采用了精心设计的多阶段策略：
-
-\textbf{迭代0-500：预热阶段}
-- 仅使用重建损失，建立基础几何结构
-- 较低的学习率：$\eta_{\text{pos}} = 1.6 \times 10^{-4}$
-- 禁用密化操作，避免早期不稳定
-
-\textbf{迭代500-7000：基础训练阶段}  
-- 启用完整的重建损失和正则化项
-- 自适应密化：每100次迭代
-- 球谐函数递增：每1000次迭代从0阶增加到3阶
-
-\textbf{迭代7000+：扩散蒸馏阶段}
-- 在特定迭代点进行扩散采样：$\{7000, 12000, 17000, 22000\}$
-- 渐进式引导强度：$s \in \{0.7, 0.5, 0.3, 0.1\}$
-- 新视点采样概率：$p_{\text{novel}} = 0.1$
-
-\textbf{迭代15000+：掩码引导阶段}
-- 启用掩码引导，精细化训练
-- 降低密化频率，稳定几何结构
-- 引入时间一致性约束
-
-\section{多模态正则化的协同设计}
-
 \subsection{几何一致性约束}
 
 \textbf{LiDAR深度约束}：
@@ -491,7 +704,65 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 \label{eq:compactness_regularization}
 \end{equation}
 
+\section{数据依赖与训练调度}
+
+本节分析系统训练的完整数据依赖关系和精心设计的训练调度策略。
+
+\subsection{数据流向分析}
+
+整个训练过程的数据依赖关系可以用以下流向图表示：
+
+\textbf{原始数据 → 预处理数据：}
+\begin{itemize}
+\item Waymo TFRecord → RGB图像序列 + LiDAR点云 + 物体轨迹 + 相机标定
+\item RGB图像 + Grounding DINO + SAM → 天空掩码
+\item LiDAR点云 + RGB图像 → 彩色点云
+\item 彩色点云 + 相机参数 → LiDAR条件图像（RGB-D）
+\end{itemize}
+
+\textbf{预处理数据 → 训练数据：}
+\begin{itemize}
+\item RGB序列 + LiDAR条件 → 扩散模型训练对
+\item 彩色点云 + 物体轨迹 → 4DGS初始化
+\item 原始轨迹 + 几何变换 → 新视点轨迹
+\item 新视点轨迹 + LiDAR条件 → 扩散采样输入
+\end{itemize}
+
+\textbf{训练数据 → 监督信号：}
+\begin{itemize}
+\item 真实RGB图像 → 重建损失监督
+\item LiDAR深度 → 几何一致性监督  
+\item 扩散生成图像 → 新视点监督信号
+\item 天空掩码 → 天空区域损失监督
+\end{itemize}
+
+\subsection{训练调度的精确设计}
+
+我们的训练调度采用了精心设计的多阶段策略：
+
+\textbf{迭代0-500：预热阶段}
+- 仅使用重建损失，建立基础几何结构
+- 较低的学习率：$\eta_{\text{pos}} = 1.6 \times 10^{-4}$
+- 禁用密化操作，避免早期不稳定
+
+\textbf{迭代500-7000：基础训练阶段}  
+- 启用完整的重建损失和正则化项
+- 自适应密化：每100次迭代
+- 球谐函数递增：每1000次迭代从0阶增加到3阶
+
+\textbf{迭代7000+：扩散监督阶段}
+- 在特定迭代点进行扩散采样：$\{7000, 12000, 17000, 22000\}$
+- 渐进式引导强度：$s \in \{0.7, 0.5, 0.3, 0.1\}$
+- 新视点采样概率：$p_{\text{novel}} = 0.1$
+
+\textbf{迭代15000+：掩码引导阶段}
+- 启用掩码引导，精细化训练
+- 降低密化频率，稳定几何结构
+- 引入时间一致性约束
+
 \section{理论分析与性能保证}
+
+本节从理论角度分析方法的收敛性和计算复杂度。
 
 \subsection{收敛性的理论保证}
 
@@ -529,8 +800,10 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 
 \section{本章小结}
 
-本章从系统设计的整体视角详细阐述了StreetCrafter的核心方法论。我们首先介绍了双阶段知识蒸馏的整体框架和设计理念，然后深入分析了LiDAR几何条件的多层次利用、基于Grounding DINO + SAM的智能天空处理、以及精心设计的分阶段训练策略。
+本章从4DGS的基础理论出发，系统性地阐述了StreetCrafter的核心方法论。我们首先介绍了4D高斯溅射的数学表示、时间建模机制和渲染方程，为理解后续方法奠定了理论基础。
 
-训练自由引导机制是我们的核心创新，通过双重引导和掩码控制实现了精确的知识迁移。多模态损失函数的协同设计确保了重建质量、几何一致性和新视点泛化能力的平衡。自适应密化算法针对动态场景进行了专门优化，支持时间感知的几何表示。
+在方法设计层面，我们提出了双阶段扩散监督框架，利用视频扩散模型生成高质量监督信号来引导4DGS的优化训练。通过LiDAR几何条件的多层次利用、智能天空处理和精心设计的分阶段训练策略，系统实现了几何一致性和视觉质量的平衡。
+
+训练自由引导机制是我们的核心创新，通过双重引导和掩码控制实现了精确的监督信号传递。多模态损失函数的协同设计确保了重建质量、几何一致性和新视点泛化能力的平衡。自适应密化算法针对动态场景进行了专门优化，支持时间感知的几何表示。
 
 理论分析证明了方法的收敛性和复杂度特性，为实际应用提供了理论指导。该方法论框架为解决4DGS在视点外推任务上的挑战提供了系统性的解决方案，下一章将详细介绍具体的工程实现和系统架构。

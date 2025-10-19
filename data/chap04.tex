@@ -10,7 +10,14 @@
 
 针对4D高斯溅射与视频扩散模型融合的复杂性，我们提出了一种五层解耦架构，每层承担明确的职责并通过标准化接口进行交互。这种设计的核心优势在于：（1）降低系统复杂度，提高可维护性；（2）支持组件级别的独立优化和测试；（3）便于不同算法模块的替换和扩展。
 
-\textbf{数据抽象层}实现了对异构数据源的统一抽象，采用适配器模式屏蔽不同数据集格式的差异。\textbf{几何表示层}负责4D高斯溅射的核心数据结构管理，采用组合模式统一处理静态背景、动态物体和环境表示。\textbf{神经渲染层}实现了可微分高斯光栅化引擎，采用策略模式支持多种渲染后端。\textbf{扩散推理层}封装了视频扩散模型的推理逻辑，实现了内存高效的长序列采样算法。\textbf{知识蒸馏层}协调扩散模型和4DGS的联合优化，实现了自适应的知识迁移算法。
+\textbf{数据抽象层}实现了对异构数据源的统一抽象，采用适配器模式屏蔽不同数据集格式的差异。\textbf{几何表示层}负责4D高斯溅射的核心数据结构管理，采用组合模式统一处理静态背景、动态物体和环境表示。\textbf{神经渲染层}实现了可微分高斯光栅化引擎，采用策略模式支持多种渲染后端。\textbf{扩散推理层}封装了视频扩散模型的推理逻辑，实现了内存高效的长序列采样算法。\textbf{扩散监督层}协调扩散模型和4DGS的联合优化，实现了自适应的监督信号传递算法。
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pdf/system_architecture.pdf}
+  \caption{StreetCrafter系统五层架构设计}
+  \label{fig:system-architecture}
+\end{figure}
 
 \subsection{模块间通信的接口设计}
 
@@ -31,6 +38,13 @@
 
 其中$\mathcal{C}$是可配置的组合函数，支持不同的混合策略和后处理操作。
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pdf/rendering_modes.pdf}
+  \caption{多模态渲染架构与渲染模式}
+  \label{fig:rendering-modes}
+\end{figure}
+
 \subsection{GPU加速的光栅化优化}
 
 针对4D高斯溅射的计算特点，我们设计了多项GPU加速优化策略：
@@ -46,7 +60,7 @@ M_{\text{pool}} = \alpha \cdot N_g \cdot D_{\text{gaussian}} + \beta \cdot H \cd
 
 其中$\alpha$和$\beta$是经验系数，$M_{\text{buffer}}$是安全缓冲区大小。
 
-\section{知识蒸馏的算法创新}
+\section{扩散监督的算法创新}
 
 \subsection{自适应采样调度算法}
 
@@ -58,9 +72,9 @@ M_{\text{pool}} = \alpha \cdot N_g \cdot D_{\text{gaussian}} + \beta \cdot H \cd
 
 \subsection{训练自由引导的实现机制}
 
-我们提出的训练自由引导机制是一种自适应的正则化策略，通过引入当前模型状态作为额外的先验信息，防止知识蒸馏过程中的模式崩溃。该机制的核心优势在于能够动态调整引导信号的强度，根据当前模型的渲染质量来决定扩散模型引导的权重。
+我们提出的训练自由引导机制是一种自适应的正则化策略，通过引入当前模型状态作为额外的先验信息，防止扩散监督训练过程中的模式崩溃。该机制的核心优势在于能够动态调整引导信号的强度，根据当前模型的渲染质量来决定扩散模型引导的权重。
 
-这种引导机制的实现相对简单但效果显著。系统会实时评估当前4DGS模型的渲染质量，当质量较低时增强扩散引导，当质量较高时减弱引导强度。这种自适应调整策略确保了知识蒸馏过程的稳定性，同时避免了过度引导可能导致的模型退化问题。
+这种引导机制的实现相对简单但效果显著。系统会实时评估当前4DGS模型的渲染质量，当质量较低时增强扩散引导，当质量较高时减弱引导强度。这种自适应调整策略确保了训练过程的稳定性，同时避免了过度引导可能导致的模型退化问题。
 
 \section{内存优化与计算加速}
 
@@ -122,8 +136,19 @@ DiT架构在处理长视频序列时面临自注意力计算的二次复杂度�
 
 针对Hopper架构GPU，我们集成了内存高效的注意力计算。系统采用了xformers库的memory\_efficient\_attention实现，并通过批处理优化来处理大规模序列：
 
-\begin{verbatim}
-# 来自attention.py的实际实现
+\begin{figure}[!b]
+  \begin{tmpbox}
+    \lstset{
+      basicstyle=\fontsize{10}{11}\ttfamily, 
+      numbersep=5pt, 
+      columns=flexible, 
+      captionpos=t,
+      numbers=left,
+      numberstyle=\tiny\ttfamily,
+      breaklines=true,
+    }
+    \begin{lstlisting}[language=Python]
+# Actual implementation from attention.py
 if batchify_xformers:
     max_bs = 32768  # >65536 will result in wrong outputs
     n_batches = math.ceil(q.shape[0] / max_bs)
@@ -137,7 +162,11 @@ if batchify_xformers:
             )
         )
     out = torch.cat(out, 0)
-\end{verbatim}
+\end{lstlisting}
+  \end{tmpbox}
+  \caption{内存高效注意力机制实现}
+  \label{fig:attention-code}
+\end{figure}
 
 通过这些优化策略的组合，我们的系统能够在保持DiT架构优势的同时，有效处理长视频序列的生成任务。
 
@@ -179,8 +208,19 @@ if batchify_xformers:
 
 系统中的高斯密化和剪枝算法采用了多准则决策机制。基于真实实现的密化逻辑如下：
 
-\begin{verbatim}
-# 来自gaussian_model.py的实际实现
+\begin{figure}[!b]
+  \begin{tmpbox}
+    \lstset{
+      basicstyle=\fontsize{10}{11}\ttfamily, 
+      numbersep=5pt, 
+      columns=flexible, 
+      captionpos=t,
+      numbers=left,
+      numberstyle=\tiny\ttfamily,
+      breaklines=true,
+    }
+    \begin{lstlisting}[language=Python]
+# Actual implementation from gaussian_model.py
 def densify_and_prune(self, max_grad, min_opacity, prune_big_points, extent, max_screen_size):
     grads = self.xyz_gradient_accum[:, 0:1] / self.denom
     grads[grads.isnan()] = 0.0
@@ -196,18 +236,40 @@ def densify_and_prune(self, max_grad, min_opacity, prune_big_points, extent, max
         prune_mask = torch.logical_or(prune_mask, big_points_ws)
     
     self.prune_points(prune_mask)
-\end{verbatim}
+\end{lstlisting}
+  \end{tmpbox}
+  \caption{高斯密化和剪枝算法实现}
+  \label{fig:gaussian-densify}
+\end{figure}
 
 系统还实现了智能的遮挡剔除算法，能够识别并跳过被遮挡的几何元素的渲染计算。通过这些优化策略的组合使用，系统能够在保持高质量视觉效果的前提下，实现稳定的实时渲染性能。
 
 \section{数据处理与预处理系统}
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.95\textwidth]{pdf/data_processing_flow.pdf}
+  \caption{Waymo Open Dataset数据处理流程}
+  \label{fig:data-processing-flow}
+\end{figure}
+
 \subsection{天空掩码生成的实现细节}
 
 系统实现了基于Grounding DINO和SAM的两阶段天空分割流程。该实现针对自动驾驶场景的特点进行了专门优化，能够准确识别和分割天空区域。具体的实现逻辑如下：
 
-\begin{verbatim}
-# 来自generate_sky_mask.py的实际实现
+\begin{figure}[!b]
+  \begin{tmpbox}
+    \lstset{
+      basicstyle=\fontsize{10}{11}\ttfamily, 
+      numbersep=5pt, 
+      columns=flexible, 
+      captionpos=t,
+      numbers=left,
+      numberstyle=\tiny\ttfamily,
+      breaklines=true,
+    }
+    \begin{lstlisting}[language=Python]
+# Actual implementation from generate_sky_mask.py
 boxes, logits, phrases = predict(
     model=groundingdino_model, 
     image=image, 
@@ -216,11 +278,11 @@ boxes, logits, phrases = predict(
     text_threshold=TEXT_TRESHOLD
 )
 
-# 空间约束：天空区域应该在图像顶部
+# Spatial constraint: sky region should be at image top
 boxes_mask = boxes_xyxy[:, 1] < 100  # Top 100 pixels only
 boxes_xyxy = boxes_xyxy[boxes_mask]
 
-# SAM精细分割
+# SAM fine-grained segmentation
 sam_predictor.set_image(image_source)
 transformed_boxes = sam_predictor.transform.apply_boxes_torch(
     boxes_xyxy, image_source.shape[:2]
@@ -229,7 +291,11 @@ masks, _, _ = sam_predictor.predict_torch(
     point_coords=None, point_labels=None,
     boxes=transformed_boxes, multimask_output=False
 )
-\end{verbatim}
+\end{lstlisting}
+  \end{tmpbox}
+  \caption{天空遮罩生成实现}
+  \label{fig:sky-mask-code}
+\end{figure}
 
 这种两阶段设计的优势在于结合了文本引导的粗略定位和基于提示的精确分割，能够在复杂的城市场景中准确识别天空区域。
 
@@ -237,16 +303,27 @@ masks, _, _ = sam_predictor.predict_torch(
 
 系统的训练循环采用了精心设计的多阶段策略，能够根据训练进度动态调整采样频率和引导强度。核心的训练循环实现如下：
 
-\begin{verbatim}
-# 来自train.py的实际实现
+\begin{figure}[!b]
+  \begin{tmpbox}
+    \lstset{
+      basicstyle=\fontsize{10}{11}\ttfamily, 
+      numbersep=5pt, 
+      columns=flexible, 
+      captionpos=t,
+      numbers=left,
+      numberstyle=\tiny\ttfamily,
+      breaklines=true,
+    }
+    \begin{lstlisting}[language=Python]
+# Actual implementation from train.py
 for iteration in range(start_iter, training_args.iterations + 1):
     gaussians.update_learning_rate(iteration)
     
-    # 每1000次迭代增加球谐函数阶数
+    # Increase SH degree every 1000 iterations
     if iteration % 1000 == 0:
         gaussians.oneupSHdegree()
     
-    # 扩散采样调度
+    # Diffusion sampling schedule
     if use_diffusion and (iteration in diffusion_args.sample_iterations):
         scale = (min_scale - max_scale) * (iteration - min_iteration) / \
                 (max_iteration - min_iteration) + max_scale
@@ -256,7 +333,11 @@ for iteration in range(start_iter, training_args.iterations + 1):
             use_render=True, scale=scale,
             masked_guidance=iteration >= cfg.diffusion.masked_guidance_iter
         )
-\end{verbatim}
+\end{lstlisting}
+  \end{tmpbox}
+  \caption{训练循环实现}
+  \label{fig:train-loop-code}
+\end{figure}
 
 训练循环的设计考虑了4DGS模型的特点，通过动态调整学习率、球谐函数阶数和扩散采样参数，实现了稳定的训练过程。
 
@@ -264,8 +345,19 @@ for iteration in range(start_iter, training_args.iterations + 1):
 
 系统实现了精细的内存管理机制，特别是针对大规模扩散模型的动态加载和卸载。这种设计对于在有限GPU内存下训练大模型至关重要：
 
-\begin{verbatim}
-# 来自sample_utils.py的实际实现
+\begin{figure}[!b]
+  \begin{tmpbox}
+    \lstset{
+      basicstyle=\fontsize{10}{11}\ttfamily, 
+      numbersep=5pt, 
+      columns=flexible, 
+      captionpos=t,
+      numbers=left,
+      numberstyle=\tiny\ttfamily,
+      breaklines=true,
+    }
+    \begin{lstlisting}[language=Python]
+# Actual implementation from sample_utils.py
 def load_model(model):
     model.to('cuda', non_blocking=True)
 
@@ -275,18 +367,22 @@ def unload_model(model):
         model.cpu()
         torch.cuda.empty_cache()
 
-# 训练中的动态内存管理
+# Dynamic memory management during training
 with torch.no_grad(), model.ema_scope("Sampling"):
     load_model(model.first_stage_model)
     z = model.encode_first_stage(images)
     unload_model(model.first_stage_model)
-    
+
     load_model(model.denoiser)
     load_model(model.model)
-    # ... 推理过程 ...
+    # ... Inference process ...
     unload_model(model.model)
     unload_model(model.denoiser)
-\end{verbatim}
+\end{lstlisting}
+  \end{tmpbox}
+  \caption{Python内存管理代码实现}
+  \label{fig:python-memory}
+\end{figure}
 
 这种动态内存管理策略允许系统在推理过程中只加载当前需要的模型组件，显著降低了峰值内存占用。系统还支持低显存模式，能够在资源受限的环境中运行大规模模型。
 

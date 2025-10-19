@@ -207,3 +207,37 @@
 
 % hyperref 宏包在最后调用
 \usepackage{hyperref}
+
+% 加载 tcolorbox 包用于代码展示
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usetikzlibrary{calc}
+
+% 加载 listings 包用于代码高亮
+\usepackage{listings}
+
+% 定义 tmpbox 环境用于代码展示
+\newenvironment{tmpbox}{%
+  \tcolorbox[%
+  empty,
+  parbox=false,
+  noparskip,
+  enhanced,
+  % breakable,
+  frame hidden,
+  % boxrule=3pt %,
+  colback=white,
+  top = 1.2ex,
+  bottom = 0.2ex,
+  left=3ex, 
+  % right=-4pt %,
+  before skip=.5ex plus 2pt,
+  after skip=1ex plus 2pt,
+  overlay unbroken and last={%
+    \draw ($(frame.north west)+(0.1, -2.0ex)$)
+    -- +(0.985\textwidth, 0);
+    \draw ($(frame.south west)+(0.1, 1.3ex)$)
+    -- +(0.985\textwidth, 0);    
+  }
+  ]
+}{\endtcolorbox}
