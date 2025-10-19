@@ -49,12 +49,10 @@ graph TD
     J --> K
     K --> L
     
-    classDef rendererStyle fill:#E3F2FD,stroke:#1565C0,stroke-width:2px,color:#000000
-    classDef gaussianStyle fill:#E8F5E8,stroke:#2E7D32,stroke-width:2px,color:#000000
-    classDef kernelStyle fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#000000
-    classDef outputStyle fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#000000
+    classDef normalStyle fill:#FFFFFF,stroke:#999999,stroke-width:2px
+    classDef importantStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+    classDef subgraphStyle fill:#F5F5F5,stroke:#CCCCCC,stroke-width:2px
     
-    class A,B,C,D,E rendererStyle
-    class F,G,H gaussianStyle
-    class I,J,K,L kernelStyle
-    class M,N,O,P outputStyle
+    class A,F,I,M importantStyle
+    class B,C,D,E,G,H,J,K,L,N,O,P normalStyle
+    class RendererCore,GaussianComponents,RenderingKernel,OutputModes subgraphStyle

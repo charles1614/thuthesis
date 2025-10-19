@@ -19,6 +19,10 @@ spine.pdf
 build/
 testfiles/**/*.pdf
 
+## Mermaid generated PDF files:
+figures/pdf/
+figures/**/*.pdf
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof

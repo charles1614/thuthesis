@@ -1,0 +1,20 @@
+{
+  "theme": "neutral",
+  "themeVariables": {
+    "primaryColor": "#FFFFFF",
+    "primaryTextColor": "#000000",
+    "primaryBorderColor": "#999999",
+    "lineColor": "#666666",
+    "secondaryColor": "#F5F5F5",
+    "tertiaryColor": "#E3F2FD",
+    "background": "#FFFFFF",
+    "mainBkg": "#FFFFFF",
+    "secondBkg": "#F5F5F5",
+    "tertiaryBkg": "#E3F2FD"
+  },
+  "flowchart": {
+    "nodeSpacing": 50,
+    "rankSpacing": 50,
+    "curve": "basis"
+  }
+}

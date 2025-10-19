@@ -1,0 +1,117 @@
+---
+description: Mermaid diagram unified color scheme and generation standards
+globs: ["**/*.mmd", "figures/**/*"]
+alwaysApply: false
+---
+
+# Mermaid Diagram Color Rules
+
+## Color Standards
+
+### Node Colors
+- **Normal Nodes**: White fill + Gray border
+  - `fill:#FFFFFF`
+  - `stroke:#999999`
+  - `stroke-width:2px`
+
+- **Important Nodes**: Light blue fill + Blue border
+  - `fill:#E3F2FD`
+  - `stroke:#1976D2`
+  - `stroke-width:2px`
+
+### Important Node Selection Criteria
+The following types of nodes should be marked as important:
+- Core algorithm/model components
+- Main data flow entry/exit points
+- Key processing steps
+- Core components of system architecture
+
+## Implementation Methods
+
+### 1. Theme Configuration
+Use `neutral` theme as base to avoid default yellow theme:
+
+```json
+{
+  "theme": "neutral",
+  "themeVariables": {
+    "primaryColor": "#FFFFFF",
+    "primaryTextColor": "#000000",
+    "primaryBorderColor": "#999999",
+    "lineColor": "#666666",
+    "secondaryColor": "#F5F5F5",
+    "tertiaryColor": "#E3F2FD",
+    "background": "#FFFFFF",
+    "mainBkg": "#FFFFFF",
+    "secondBkg": "#F5F5F5",
+    "tertiaryBkg": "#E3F2FD"
+  }
+}
+```
+
+### 2. Inline Style Definition Template
+Use the following style definitions in each `.mmd` file:
+
+```mermaid
+classDef normalStyle fill:#FFFFFF,stroke:#999999,stroke-width:2px
+classDef importantStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
+
+class [normal node list] normalStyle
+class [important node list] importantStyle
+```
+
+## Generation Commands
+
+### Configuration File Generation
+```bash
+mmdc -i figures/filename.mmd -o figures/pdf/filename.pdf -e pdf --pdfFit --configFile figures/mermaid-neutral-config.json --puppeteerConfigFile <(echo '{"executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}')
+```
+
+### Batch Generation
+```bash
+for file in figures/*.mmd; do
+  basename=$(basename "$file" .mmd)
+  mmdc -i "$file" -o "figures/pdf/${basename}.pdf" -e pdf --pdfFit --configFile figures/mermaid-neutral-config.json --puppeteerConfigFile <(echo '{"executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"}')
+done
+```
+
+## Quality Checklist
+
+### Visual Checklist
+- [ ] All nodes use unified color scheme
+- [ ] Important nodes correctly marked in blue
+- [ ] Subgraph backgrounds are light gray (not yellow)
+- [ ] Connection lines are gray
+- [ ] Text is clear and readable
+
+### Technical Checklist
+- [ ] Using `neutral` theme
+- [ ] Inline style definitions are correct
+- [ ] Configuration file exists and is valid
+- [ ] PDF files generated successfully
+
+## Troubleshooting
+
+### Common Issues
+1. **Nodes still showing yellow**: Check if `neutral` theme is used
+2. **Styles not taking effect**: Confirm inline style definitions are correct
+3. **PDF generation fails**: Check Chrome path configuration
+
+### Solutions
+1. Use configuration file instead of CSS file
+2. Ensure inline styles have priority over theme variables
+3. Use `--pdfFit` parameter to optimize PDF output
+
+## File Organization
+
+### Mermaid Source Files
+- Location: `figures/*.mmd`
+- Naming: Descriptive names with underscore separation
+
+### Generated PDF Files
+- Location: `figures/pdf/*.pdf`
+- Naming: Same as source files
+
+### Configuration Files
+- Location: `figures/mermaid-neutral-config.json`
+- Purpose: Unified theme configuration
