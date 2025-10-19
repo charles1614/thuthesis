@@ -1,0 +1,395 @@
+\begin{thebibliography}{70}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{#1}
+\expandafter\ifx\csname urlstyle\endcsname\relax\else
+  \urlstyle{same}\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \DeclareUrlCommand\doi{\urlstyle{rm}}
+  \def\eprint#1#2{#2}
+\else
+  \def\doi#1{\href{https://doi.org/#1}{\nolinkurl{#1}}}
+  \let\eprint\href
+\fi
+
+\bibitem[Chen et~al.(2025)Chen, Zhang, Xie, Li, Zhang, Lu, and Zhang]{chen2025snerf}
+Chen Y, Zhang J, Xie Z, et~al.
+\newblock S-nerf++: Autonomous driving simulation via neural reconstruction and generation\allowbreak[J].
+\newblock IEEE Transactions on Pattern Analysis and Machine Intelligence, 2025.
+
+\bibitem[Yan et~al.(2024)Yan, Xu, Lin, Jin, Guo, Wang, Zhan, Lang, Bao, and Zhou]{yan2024street}
+Yan Y, Xu Z, Lin H, et~al.
+\newblock Street-gaussians for modeling dynamic urban scenes\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Mildenhall et~al.(2022)Mildenhall, Srinivasan, Tancik, Barron, Ramamoorthi, and Ng]{mildenhall2021nerf}
+Mildenhall B, Srinivasan P~P, Tancik M, et~al.
+\newblock Nerf: Representing scenes as neural radiance fields for view synthesis\allowbreak[J].
+\newblock Communications of the ACM, 2022, 65\allowbreak (1): 99-106.
+
+\bibitem[Tancik et~al.(2022)Tancik, Casser, Yan, Pradhan, Mildenhall, Srinivasan, Barron, and Kretzschmar]{blocknerf2022}
+Tancik M, Casser V, Yan X, et~al.
+\newblock Block-nerf: Scalable large scene neural view synthesis\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2022: 8248-8258.
+
+\bibitem[Turki et~al.(2022)Turki, Ramanan, and Satyanarayanan]{meganeRF2022}
+Turki H, Ramanan D, Satyanarayanan M.
+\newblock Mega-nerf: Scalable construction of large-scale nerfs for virtual fly-throughs\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2022: 17091-17101.
+
+\bibitem[Kerbl et~al.(2023)Kerbl, Kopanas, Martin-Brualla, and Drettakis]{kerbl2023gaussian}
+Kerbl B, Kopanas G, Martin-Brualla R, et~al.
+\newblock 3d gaussian splatting for real-time radiance field rendering\allowbreak[J].
+\newblock ACM Transactions on Graphics, 2023, 42\allowbreak (4): Article 114.
+
+\bibitem[Ho et~al.(2020)Ho, Jain, and Abbeel]{ho2020denoising}
+Ho J, Jain A, Abbeel P.
+\newblock Denoising diffusion probabilistic models\allowbreak[C]//\allowbreak
+Advances in Neural Information Processing Systems 33 (NeurIPS 2020).
+\newblock 2020: 6840-6851.
+
+\bibitem[Poole et~al.(2022)Poole, Jain, Barron, and Mildenhall]{dreamfusion2022}
+Poole B, Jain A, Barron J~T, et~al.
+\newblock Dreamfusion: Text-to-3d using 2d diffusion\allowbreak[C]//\allowbreak
+arXiv preprint arXiv:2209.14988.
+\newblock 2022.
+
+\bibitem[Chen et~al.(2024)Chen, Wu, Chitta, Jaeger, Geiger, and Li]{chen2024autonomous}
+Chen L, Wu P, Chitta K, et~al.
+\newblock End-to-end autonomous driving: Challenges and frontiers\allowbreak[J].
+\newblock IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 2024.
+
+\bibitem[Hu et~al.(2023)Hu, Yang, Chen, Li, Sima, Zhu, Chai, Du, Lin, Wang, et~al.]{hu2023planning}
+Hu Y, Yang J, Chen L, et~al.
+\newblock Planning-oriented autonomous driving\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2023.
+
+\bibitem[Ma et~al.(2024)Ma, Wang, Bai, Yang, Hou, Wang, Qiao, Yang, and Zhu]{ma2024vision}
+Ma Y, Wang T, Bai X, et~al.
+\newblock Vision-centric bev perception: A survey\allowbreak[J].
+\newblock IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 2024.
+
+\bibitem[Kong et~al.(2025)Kong, Xu, Ren, Zhang, Pan, Chen, Ooi, and Liu]{kong2025multimodal}
+Kong L, Xu X, Ren J, et~al.
+\newblock Multi-modal data-efficient 3d scene understanding for autonomous driving\allowbreak[J].
+\newblock IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI), 2025.
+
+\bibitem[Sohl-Dickstein et~al.(2015)Sohl-Dickstein, Weiss, Maheswaranathan, and Ganguli]{ddpm2015}
+Sohl-Dickstein J, Weiss E, Maheswaranathan N, et~al.
+\newblock Deep unsupervised learning using nonequilibrium thermodynamics\allowbreak[J].
+\newblock International Conference on Machine Learning (ICML), 2015: 2256-2265.
+
+\bibitem[Song et~al.(2021)Song, Sohl-Dickstein, Kingma, Kumar, Ermon, and Poole]{song2020score}
+Song Y, Sohl-Dickstein J, Kingma D~P, et~al.
+\newblock Score-based generative modeling through stochastic differential equations\allowbreak[C]//\allowbreak
+International Conference on Learning Representations (ICLR).
+\newblock 2021.
+
+\bibitem[Gao et~al.(2024)Gao, Chen, Xie, Hong, Li, Yeung, and Xu]{gao2024magicdrive}
+Gao R, Chen K, Xie E, et~al.
+\newblock Magicdrive: Street view generation with diverse 3d geometry control\allowbreak[C]//\allowbreak
+International Conference on Learning Representations (ICLR).
+\newblock 2024.
+
+\bibitem[Wen et~al.(2024)Wen, Zhao, Liu, Jia, Wang, Luo, Zhang, Wang, Sun, and Zhang]{wen2024panacea}
+Wen Y, Zhao Y, Liu Y, et~al.
+\newblock Panacea: Panoramic and controllable video generation for autonomous driving\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2024.
+
+\bibitem[Mao et~al.(2025)Mao, Li, Ivanovic, Chen, Wang, You, Xiao, Xu, Pavone, and Wang]{mao2025dreamdrive}
+Mao J, Li B, Ivanovic B, et~al.
+\newblock Dreamdrive: Generative 4d scene modeling from street view images\allowbreak[C]//\allowbreak
+International Conference on Robotics and Automation (ICRA).
+\newblock 2025.
+
+\bibitem[Wang et~al.(2024)Wang, Zhu, Huang, Chen, and Lu]{wang2024drivedreamer}
+Wang X, Zhu Z, Huang G, et~al.
+\newblock Drivedreamer: Towards real-world-driven world models for autonomous driving\allowbreak[C]//\allowbreak
+European Conference on Computer Vision (ECCV).
+\newblock 2024.
+
+\bibitem[Wang et~al.(2024)Wang, Zheng, Du, Zhang, Ren, Jiang, Cui, Yu, Zhou, Lu, et~al.]{wang2024stag1}
+Wang L, Zheng W, Du D, et~al.
+\newblock Stag-1: Towards realistic 4d driving simulation with video generation model\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Li et~al.(2024)Li, Deng, Zhang, Liang, Du, Jin, and Zeng]{li2024hierarchical}
+Li B, Deng J, Zhang W, et~al.
+\newblock Hierarchical temporal context learning for camera-based semantic scene completion\allowbreak[C]//\allowbreak
+European Conference on Computer Vision (ECCV).
+\newblock 2024: 131-148.
+
+\bibitem[Gao et~al.(2025)Gao, Yang, Chen, Chitta, Qiu, Geiger, Zhang, and Li]{gao2025vista}
+Gao S, Yang J, Chen L, et~al.
+\newblock Vista: A generalizable driving world model with high fidelity and versatile controllability\allowbreak[J].
+\newblock Advances in Neural Information Processing Systems (NeurIPS), 2025, 37: 91560-91596.
+
+\bibitem[Li et~al.(2023)Li, Sun, Liang, Du, Zhang, Wang, Wang, Jin, and Zeng]{li2023bridging}
+Li B, Sun Y, Liang Z, et~al.
+\newblock Bridging stereo geometry and bev representation with reliable mutual interaction for semantic scene completion\allowbreak[A].
+\newblock 2023.
+
+\bibitem[Wang et~al.(2024)Wang, He, Fan, Li, Chen, and Zhang]{wang2024driving}
+Wang Y, He J, Fan L, et~al.
+\newblock Driving into the future: Multiview visual forecasting and planning with world model for autonomous driving\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2024: 14749-14759.
+
+\bibitem[Gao et~al.(2024)Gao, Chen, Li, Hong, Li, and Xu]{gao2024magicdrive3d}
+Gao R, Chen K, Li Z, et~al.
+\newblock Magicdrive3d: Controllable 3d generation for any-view rendering in street scenes\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Lu et~al.(2024)Lu, Ren, Yang, Shen, Wu, Gao, Wang, Chen, Chen, Fidler, et~al.]{lu2024infinicube}
+Lu Y, Ren X, Yang J, et~al.
+\newblock Infinicube: Unbounded and controllable dynamic 3d driving scene generation with world-guided video models\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Li et~al.(2025)Li, Guo, Liu, Zou, Ding, Chen, Zhu, Tan, Zhang, Wang, et~al.]{li2025uniscene}
+Li B, Guo J, Liu H, et~al.
+\newblock Uniscene: Unified occupancy-centric driving scene generation\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2025: 11971-11981.
+
+\bibitem[Guo et~al.(2025)Guo, Ding, Chen, Chen, Li, Zou, Lyu, Tan, Qi, Li, et~al.]{guo2025dist4d}
+Guo J, Ding Y, Chen X, et~al.
+\newblock Dist-4d: Disentangled spatiotemporal diffusion with metric depth for 4d driving scene generation\allowbreak[A].
+\newblock 2025.
+
+\bibitem[Ren et~al.(2025)Ren, Shen, Huang, Ling, Lu, Nimier-David, Müller, Keller, Fidler, and Gao]{ren2025gen3c}
+Ren X, Shen T, Huang J, et~al.
+\newblock Gen3c: 3d-informed world-consistent video generation with precise camera control\allowbreak[A].
+\newblock 2025.
+
+\bibitem[Wu et~al.(2023)Wu, Liu, Luo, Zhong, Chen, Xiao, Hou, Lou, Chen, Yang, Huang, Ye, Yan, Shi, Liao, and Zhao]{wu2023mars}
+Wu Z, Liu T, Luo L, et~al.
+\newblock Mars: An instance-aware, modular and realistic simulator for autonomous driving\allowbreak[C]//\allowbreak
+Conference on Cognitive Intelligence and Artificial Intelligence (CICAI).
+\newblock 2023.
+
+\bibitem[Yang et~al.(2023)Yang, Ivanovic, Litany, Weng, Kim, Li, Che, Xu, Fidler, Pavone, and Wang]{yang2023emernerf}
+Yang J, Ivanovic B, Litany O, et~al.
+\newblock Emernerf: Emergent spatial-temporal scene decomposition via self-supervision\allowbreak[A].
+\newblock 2023.
+
+\bibitem[Yang et~al.(2023)Yang, Ivanovic, Litany, Weng, Kim, Li, Che, Xu, Fidler, Pavone, and Wang]{emernerf2023}
+Yang J, Ivanovic B, Litany O, et~al.
+\newblock Emernerf: Emergent spatial-temporal scene decomposition via self-supervision\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV).
+\newblock 2023: 18510-18522.
+
+\bibitem[Kerbl et~al.(2023)Kerbl, Kopanas, Leimkühler, and Drettakis]{kerbl20233dgs}
+Kerbl B, Kopanas G, Leimkühler T, et~al.
+\newblock 3d gaussian splatting for real-time radiance field rendering\allowbreak[C]//\allowbreak
+ACM Transactions on Graphics: Vol.~42.
+\newblock 2023: 1-14.
+
+\bibitem[Zhou et~al.(2024)Zhou, Lin, Shan, Wang, Sun, and Yang]{zhou2024drivinggaussian}
+Zhou X, Lin Z, Shan X, et~al.
+\newblock Drivinggaussian: Composite gaussian splatting for surrounding dynamic autonomous driving scenes\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2024: 21634-21643.
+
+\bibitem[Yan et~al.(2024)Yan, Lin, Zhou, Wang, Sun, Zhan, Lang, Zhou, and Peng]{yan2024streetgaussians}
+Yan Y, Lin H, Zhou C, et~al.
+\newblock Street gaussians: Modeling dynamic urban scenes with gaussian splatting\allowbreak[C]//\allowbreak
+European Conference on Computer Vision (ECCV).
+\newblock 2024: 156-173.
+
+\bibitem[Chen et~al.(2023)Chen, Gu, Jiang, Zhu, and Zhang]{chen2023pvg}
+Chen Y, Gu C, Jiang J, et~al.
+\newblock Periodic vibration gaussian: Dynamic urban scene reconstruction and real-time rendering\allowbreak[A].
+\newblock 2023.
+
+\bibitem[Chen et~al.(2023)Chen, Gu, Jiang, Zhu, and Zhang]{chen2023pvg_arxiv}
+Chen Y, Gu C, Jiang J, et~al.
+\newblock Periodic vibration gaussian: Dynamic urban scene reconstruction and real-time rendering\allowbreak[A].
+\newblock 2023.
+
+\bibitem[Chen et~al.(2024)Chen, Yang, Huang, de~Lutio, Esturo, Ivanovic, Litany, Gojcic, Fidler, Pavone, et~al.]{chen2024omnire}
+Chen Z, Yang J, Huang J, et~al.
+\newblock Omnire: Omni urban scene reconstruction\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Huo et~al.(2025)Huo, Jiang, Wei, Liu, Zhang, Liu, Huang, Lu, Peng, Li, et~al.]{huo2025egsral}
+Huo Y, Jiang G, Wei H, et~al.
+\newblock Egsral: An enhanced 3d gaussian splatting based renderer with automated labeling for large-scale driving scene\allowbreak[C]//\allowbreak
+Proceedings of the AAAI Conference on Artificial Intelligence.
+\newblock 2025: 3860-3867.
+
+\bibitem[Tian et~al.(2024)Tian, Tan, Xie, and Ma]{tian2024drivingforward}
+Tian Q, Tan X, Xie Y, et~al.
+\newblock Drivingforward: Feed-forward 3d gaussian splatting for driving scene reconstruction from flexible surround-view input\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Lu et~al.(2024)Lu, Xu, Zheng, Zhang, Zhan, Du, Tomizuka, Keutzer, and Chen]{lu2024drivingrecon}
+Lu H, Xu T, Zheng W, et~al.
+\newblock Drivingrecon: Large 4d gaussian reconstruction model for autonomous driving\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Yang et~al.(2024)Yang, Huang, Chen, Wang, Li, You, Sharma, Igl, Karkus, Xu, et~al.]{yang2024storm}
+Yang J, Huang J, Chen Y, et~al.
+\newblock Storm: Spatio-temporal reconstruction model for large-scale outdoor scenes\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Yang et~al.(2023)Yang, Gao, Zhou, Jiao, Zhang, and Jin]{yang2023deformable}
+Yang Z, Gao X, Zhou W, et~al.
+\newblock Deformable 3d gaussians for high-fidelity monocular dynamic scene reconstruction\allowbreak[A].
+\newblock 2023.
+
+\bibitem[Tang et~al.(2024)Tang, Chen, Chen, Wang, Zeng, and Liu]{tang2024lgm}
+Tang J, Chen Z, Chen X, et~al.
+\newblock Lgm: Large multi-view gaussian model for high-resolution 3d content creation\allowbreak[C]//\allowbreak
+European Conference on Computer Vision (ECCV).
+\newblock 2024: 1-18.
+
+\bibitem[Zhang et~al.(2024)Zhang, Bi, Tan, Xiangli, Zhao, Sunkavalli, and Xu]{zhang2024gslrm}
+Zhang K, Bi S, Tan H, et~al.
+\newblock Gs-lrm: Large reconstruction model for 3d gaussian splatting\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Charatan et~al.(2024)Charatan, Li, Tagliasacchi, and Sitzmann]{charatan2024pixelsplat}
+Charatan D, Li S~L, Tagliasacchi A, et~al.
+\newblock Pixelsplat: 3d gaussian splats from image pairs for scalable generalizable 3d reconstruction\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2024.
+
+\bibitem[Chen et~al.(2024)Chen, Xu, Zheng, Zhuang, Pollefeys, Geiger, Cham, and Cai]{chen2024mvsplat}
+Chen Y, Xu H, Zheng C, et~al.
+\newblock Mvsplat: Efficient 3d gaussian splatting from sparse multi-view images\allowbreak[C]//\allowbreak
+European Conference on Computer Vision (ECCV).
+\newblock 2024.
+
+\bibitem[Ren et~al.(2024)Ren, Lu, Wu, Ling, Chen, Fidler, Williams, Huang, et~al.]{ren2024scube}
+Ren X, Lu Y, Wu J~Z, et~al.
+\newblock Scube: Instant large-scale scene reconstruction using voxsplats\allowbreak[C]//\allowbreak
+Advances in Neural Information Processing Systems (NeurIPS).
+\newblock 2024.
+
+\bibitem[Chen et~al.(2024)Chen, Martí~Monso, Du, Simchowitz, Tedrake, and Sitzmann]{chen2024diffusion}
+Chen B, Martí~Monso D, Du Y, et~al.
+\newblock Diffusion forcing: Next-token prediction meets full-sequence diffusion\allowbreak[J].
+\newblock Advances in Neural Information Processing Systems (NeurIPS), 2024, 37: 24081-24125.
+
+\bibitem[Yin et~al.(2024)Yin, Zhang, Zhang, Freeman, Durand, Shechtman, and Huang]{yin2024causvid}
+Yin T, Zhang Q, Zhang R, et~al.
+\newblock From slow bidirectional to fast causal video generators\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Song et~al.(2025)Song, Chen, Simchowitz, Du, Tedrake, and Sitzmann]{song2025history}
+Song K, Chen B, Simchowitz M, et~al.
+\newblock History-guided video diffusion\allowbreak[A].
+\newblock 2025.
+
+\bibitem[Huang et~al.(2025)Huang, Li, He, Zhou, and Shechtman]{huang2025self}
+Huang X, Li Z, He G, et~al.
+\newblock Self forcing: Bridging the train-test gap in autoregressive video diffusion\allowbreak[A].
+\newblock 2025.
+
+\bibitem[Zhao et~al.(2024)Zhao, Ni, Wang, Zhu, Zhang, Wang, Huang, Chen, Wang, Zhang, et~al.]{zhao2024drivedreamer4d}
+Zhao G, Ni C, Wang X, et~al.
+\newblock Drivedreamer4d: World models are effective data machines for 4d driving scene representation\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Zhao et~al.(2025)Zhao, Ni, Wang, Zhu, Zhang, Wang, Huang, Chen, Wang, Zhang, et~al.]{zhao2025drivedreamer4d_cvpr}
+Zhao G, Ni C, Wang X, et~al.
+\newblock Drivedreamer4d: World models are effective data machines for 4d driving scene representation\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2025: 12015-12026.
+
+\bibitem[Ni et~al.(2025)Ni, Zhao, Wang, Zhu, Qin, Huang, Liu, Chen, Wang, Zhang, et~al.]{ni2025recondreamer}
+Ni C, Zhao G, Wang X, et~al.
+\newblock Recondreamer: Crafting world models for driving scene reconstruction via online restoration\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2025: 1559-1569.
+
+\bibitem[Zhao et~al.(2025)Zhao, Wang, Ni, Zhu, Qin, Huang, and Wang]{zhao2025recondreamerpp}
+Zhao G, Wang X, Ni C, et~al.
+\newblock Recondreamer++: Harmonizing generative and reconstructive models for driving scene representation\allowbreak[A].
+\newblock 2025.
+
+\bibitem[Fan et~al.(2024)Fan, Zhang, Wang, Li, and Zhang]{fan2024freesim}
+Fan L, Zhang H, Wang Q, et~al.
+\newblock Freesim: Toward free-viewpoint camera simulation in driving scenes\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Wei et~al.(2025)Wei, Li, and Liu]{wei2025omniscene}
+Wei D, Li Z, Liu P.
+\newblock Omni-scene: Omni-gaussian representation for ego-centric sparse-view scene reconstruction\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2025: 22317-22327.
+
+\bibitem[Xie et~al.(2021)Xie, Wang, Yu, Anandkumar, Alvarez, and Luo]{xie2021segformer}
+Xie E, Wang W, Yu Z, et~al.
+\newblock Segformer: Simple and efficient design for semantic segmentation with transformers\allowbreak[J].
+\newblock Advances in Neural Information Processing Systems (NeurIPS), 2021, 34: 12077-12090.
+
+\bibitem[Liu et~al.(2024)Liu, Cheng, Wang, Wang, Ouyang, Tan, Zhu, Shen, Chen, and Luo]{liu2024depthlab}
+Liu Z, Cheng K~L, Wang Q, et~al.
+\newblock Depthlab: From partial to complete\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Wei et~al.(2023)Wei, Zhao, Zheng, Zhu, Rao, Huang, Lu, and Zhou]{wei2023surrounddepth}
+Wei Y, Zhao L, Zheng W, et~al.
+\newblock Surrounddepth: Entangling surrounding views for self-supervised multi-camera depth estimation\allowbreak[C]//\allowbreak
+Conference on Robot Learning (CoRL).
+\newblock 2023: 539-549.
+
+\bibitem[Wang et~al.(2024)Wang, Fan, Wang, Chen, and Zhang]{wang2024freevs}
+Wang Q, Fan L, Wang Y, et~al.
+\newblock Freevs: Generative view synthesis on free driving trajectory\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Yu et~al.(2021)Yu, Ye, Tancik, and Kanazawa]{yu2021pixelnerf}
+Yu A, Ye V, Tancik M, et~al.
+\newblock pixelnerf: Neural radiance fields from one or few images\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2021: 4578-4587.
+
+\bibitem[Wang et~al.(2023)Wang, Leroy, Cabon, Chidlovskii, and Revaud]{wang2023dust3r}
+Wang S, Leroy V, Cabon Y, et~al.
+\newblock Dust3r: Geometric 3d vision made easy\allowbreak[A].
+\newblock 2023.
+
+\bibitem[Liu et~al.(2024)Liu, Wang, Hu, Shen, Ye, Zang, Cao, Li, and Liu]{liu2024mvsgaussian}
+Liu T, Wang G, Hu S, et~al.
+\newblock Mvsgaussian: Fast generalizable gaussian splatting reconstruction from multi-view stereo: Vol.~2\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Yang et~al.(2024)Yang, Wen, Ma, Mei, Li, Wei, Lei, Fu, Cai, Dou, et~al.]{yang2024drivearena}
+Yang X, Wen L, Ma Y, et~al.
+\newblock Drivearena: A closed-loop generative simulation platform for autonomous driving\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Sun et~al.(2020)Sun, Kretzschmar, Dotiwalla, Chouard, Patnaik, Tsui, Guo, Zhou, Chai, Caine, et~al.]{sun2020waymo}
+Sun P, Kretzschmar H, Dotiwalla X, et~al.
+\newblock Scalability in perception for autonomous driving: Waymo open dataset\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2020: 2446-2454.
+
+\bibitem[Caesar et~al.(2020)Caesar, Bankiti, Lang, Vora, Liong, Xu, Krishnan, Pan, Baldan, and Beijbom]{caesar2020nuscenes}
+Caesar H, Bankiti V, Lang A~H, et~al.
+\newblock nuscenes: A multimodal dataset for autonomous driving\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2020.
+
+\bibitem[Wang et~al.(2022)Wang, Zhu, Zhang, Huang, Ye, Xu, Chen, and Wang]{wang2022asap}
+Wang X, Zhu Z, Zhang Y, et~al.
+\newblock Are we ready for vision-centric driving streaming perception? the asap benchmark\allowbreak[A].
+\newblock 2022.
+
+\bibitem[Wang et~al.(2023)Wang, Zhao, Xu, Chen, Yu, Chang, Yang, and Zhao]{wang2023domain}
+Wang S, Zhao X, Xu H~M, et~al.
+\newblock Towards domain generalization for multi-view 3d object detection in bird-eye-view\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2023: 13333-13342.
+
+\bibitem[Lu et~al.(2024)Lu, Zhang, Wang, Lian, Du, and Chen]{lu2024generalizable}
+Lu H, Zhang Y, Wang G, et~al.
+\newblock Towards generalizable multi-camera 3d object detection via perspective debiasing\allowbreak[A].
+\newblock 2024.
+
+\end{thebibliography}

@@ -1,0 +1,130 @@
+\begin{thebibliography}{20}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{#1}
+\expandafter\ifx\csname urlstyle\endcsname\relax\else
+  \urlstyle{same}\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \DeclareUrlCommand\doi{\urlstyle{rm}}
+  \def\eprint#1#2{#2}
+\else
+  \def\doi#1{\href{https://doi.org/#1}{\nolinkurl{#1}}}
+  \let\eprint\href
+\fi
+
+\bibitem[Chen et~al.(2025)Chen, Zhang, Xie, Li, Zhang, Lu, and Zhang]{chen2025snerf}
+Chen Y, Zhang J, Xie Z, et~al.
+\newblock S-nerf++: Autonomous driving simulation via neural reconstruction and generation\allowbreak[J].
+\newblock IEEE Transactions on Pattern Analysis and Machine Intelligence, 2025.
+
+\bibitem[Yan et~al.(2024)Yan, Xu, Lin, Jin, Guo, Wang, Zhan, Lang, Bao, and Zhou]{yan2024street}
+Yan Y, Xu Z, Lin H, et~al.
+\newblock Street-gaussians for modeling dynamic urban scenes\allowbreak[A].
+\newblock 2024.
+
+\bibitem[Mildenhall et~al.(2022)Mildenhall, Srinivasan, Tancik, Barron, Ramamoorthi, and Ng]{mildenhall2021nerf}
+Mildenhall B, Srinivasan P~P, Tancik M, et~al.
+\newblock Nerf: Representing scenes as neural radiance fields for view synthesis\allowbreak[J].
+\newblock Communications of the ACM, 2022, 65\allowbreak (1): 99-106.
+
+\bibitem[Tancik et~al.(2022)Tancik, Casser, Yan, Pradhan, Mildenhall, Srinivasan, Barron, and Kretzschmar]{blocknerf2022}
+Tancik M, Casser V, Yan X, et~al.
+\newblock Block-nerf: Scalable large scene neural view synthesis\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2022: 8248-8258.
+
+\bibitem[Turki et~al.(2022)Turki, Ramanan, and Satyanarayanan]{meganeRF2022}
+Turki H, Ramanan D, Satyanarayanan M.
+\newblock Mega-nerf: Scalable construction of large-scale nerfs for virtual fly-throughs\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2022: 17091-17101.
+
+\bibitem[Kerbl et~al.(2023)Kerbl, Kopanas, Martin-Brualla, and Drettakis]{kerbl2023gaussian}
+Kerbl B, Kopanas G, Martin-Brualla R, et~al.
+\newblock 3d gaussian splatting for real-time radiance field rendering\allowbreak[J].
+\newblock ACM Transactions on Graphics, 2023, 42\allowbreak (4): Article 114.
+
+\bibitem[Ho et~al.(2020)Ho, Jain, and Abbeel]{ho2020denoising}
+Ho J, Jain A, Abbeel P.
+\newblock Denoising diffusion probabilistic models\allowbreak[C]//\allowbreak
+Advances in Neural Information Processing Systems 33 (NeurIPS 2020).
+\newblock 2020: 6840-6851.
+
+\bibitem[Poole et~al.(2022)Poole, Jain, Barron, and Mildenhall]{dreamfusion2022}
+Poole B, Jain A, Barron J~T, et~al.
+\newblock Dreamfusion: Text-to-3d using 2d diffusion\allowbreak[C]//\allowbreak
+arXiv preprint arXiv:2209.14988.
+\newblock 2022.
+
+\bibitem[Pumarola et~al.(2021)Pumarola, Corona, Pons-Moll, and Moreno-Noguer]{dnerf2021}
+Pumarola A, Corona E, Pons-Moll G, et~al.
+\newblock D-nerf: Neural radiance fields for dynamic scenes\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2021: 10318-10327.
+
+\bibitem[Park et~al.(2021)Park, Sinha, Barron, Bouaziz, Goldman, Seitz, and Martin-Brualla]{nerfies2021}
+Park K, Sinha U, Barron J~T, et~al.
+\newblock Nerfies: Deformable neural radiance fields\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV).
+\newblock 2021: 5865-5874.
+
+\bibitem[Fridovich-Keil et~al.(2023)Fridovich-Keil, Meanti, Yu, Tancik, Chen, and Kanazawa]{kplanes2023}
+Fridovich-Keil S, Meanti G, Yu A, et~al.
+\newblock K-planes: Explicit radiance fields in space, time, and appearance\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2023: 16641-16651.
+
+\bibitem[Yang et~al.(2023)Yang, Ivanovic, Litany, Weng, Kim, Li, Che, Xu, Fidler, Pavone, and Wang]{emernerf2023}
+Yang J, Ivanovic B, Litany O, et~al.
+\newblock Emernerf: Emergent spatial-temporal scene decomposition via self-supervision\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV).
+\newblock 2023: 18510-18522.
+
+\bibitem[Wang et~al.(2023)Wang, Lu, Wang, Bao, Li, Su, and Zhu]{prolificdreamer2023}
+Wang Z, Lu C, Wang Y, et~al.
+\newblock Prolificdreamer: High-fidelity and diverse text-to-3d generation with variational score distillation\allowbreak[C]//\allowbreak
+Advances in Neural Information Processing Systems (NeurIPS).
+\newblock 2023.
+
+\bibitem[Tang et~al.(2024)Tang, Ren, Zhou, Liu, and Zeng]{luciddreamer2023}
+Tang J, Ren J, Zhou H, et~al.
+\newblock Luciddreamer: High-fidelity and detailed text-to-3d generation with interval score matching\allowbreak[C]//\allowbreak
+International Conference on Learning Representations (ICLR).
+\newblock 2024.
+
+\bibitem[Tang et~al.(2024)Tang, Ren, Zhou, Liu, and Zeng]{dreamgaussian2023}
+Tang J, Ren J, Zhou H, et~al.
+\newblock Dreamgaussian: Generative gaussian splatting for efficient 3d content creation\allowbreak[C]//\allowbreak
+International Conference on Learning Representations (ICLR).
+\newblock 2024.
+
+\bibitem[Alfarra et~al.(2022)Alfarra, Bibi, Halimi, and Ghanem]{gaudi2022}
+Alfarra M, Bibi A, Halimi I, et~al.
+\newblock Gaudi: A neural architect for immersive 3d scene generation\allowbreak[C]//\allowbreak
+Advances in Neural Information Processing Systems (NeurIPS).
+\newblock 2022.
+
+\bibitem[Rössle et~al.(2024)Rössle, Müller, Porzi, Rota~Bulò, Kontschieder, Dai, and Nießner]{rossle2024l3dg}
+Rössle B, Müller N, Porzi L, et~al.
+\newblock L3dg: Latent 3d gaussian diffusion\allowbreak[C]//\allowbreak
+SIGGRAPH Asia 2024 Conference Papers.
+\newblock 2024.
+
+\bibitem[Zhao et~al.(2024)Zhao, Ni, Wang, Zhu, Zhang, Wang, Huang, Chen, Wang, Zhang, Mei, and Wang]{drivedreamer4d2024}
+Zhao G, Ni C, Wang X, et~al.
+\newblock Drivedreamer4d: World models are effective data machines for 4d driving scene representation\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2024.
+
+\bibitem[Ni et~al.(2024)Ni, Zhao, Wang, Zhu, Qin, Huang, Liu, Chen, Wang, Zhang, Zhan, Zhan, Jia, Lang, Wang, and Mei]{recondreamer2024}
+Ni C, Zhao G, Wang X, et~al.
+\newblock Recondreamer: Crafting world models for driving scene reconstruction via online restoration\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2024.
+
+\bibitem[Yan et~al.(2025)Yan, Xu, Lin, Jin, Guo, Wang, Zhan, Lang, Bao, Zhou, and Peng]{yan2025streetcrafter}
+Yan Y, Xu Z, Lin H, et~al.
+\newblock Streetcrafter: Street view synthesis with controllable video diffusion models\allowbreak[C]//\allowbreak
+Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR).
+\newblock 2025.
+
+\end{thebibliography}
