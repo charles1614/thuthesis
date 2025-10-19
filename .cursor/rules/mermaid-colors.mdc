@@ -107,6 +107,8 @@ done
 ### Mermaid Source Files
 - Location: `figures/*.mmd`
 - Naming: Descriptive names with underscore separation
+- **Language: All content must be in English**
+- **Aspect Ratio: Target 1:1 (square) or close to it (4:3, 3:2)**
 
 ### Generated PDF Files
 - Location: `figures/pdf/*.pdf`
@@ -115,3 +117,22 @@ done
 ### Configuration Files
 - Location: `figures/mermaid-neutral-config.json`
 - Purpose: Unified theme configuration
+
+## Design Guidelines
+
+### Language Requirements
+- **All text must be in English**
+- Use clear, concise technical terms
+- Avoid abbreviations unless widely recognized
+- Node labels should be 2-3 words maximum
+
+### Layout Requirements
+- **Target aspect ratio: 1:1 (square) or 4:3 (landscape)**
+- Avoid overly vertical (>2:1) or horizontal (<1:2) layouts
+- Use `direction LR` in subgraphs for horizontal flow within vertical structure
+- Balance horizontal and vertical elements
+
+### Recommended Patterns
+1. **For 5-layer architecture**: Use 3 rows with 2 layers each in top rows
+2. **For process flows**: Use alternating LR/TB directions
+3. **For complex systems**: Group related components in subgraphs with LR direction
