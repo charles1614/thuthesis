@@ -1,55 +1,45 @@
 flowchart TD
-    subgraph RawData["Raw Waymo Open Dataset"]
-        A["Waymo TFRecord Files<br/>Multi-sensor Logs"]
-        B["RGB Image Sequences<br/>5 Cameras × T Frames"]
-        C["LiDAR Point Clouds<br/>64-beam Velodyne"]
-        D["Object Trajectories<br/>3D Bounding Boxes"]
-        E["Camera Calibration<br/>Intrinsic & Extrinsic"]
+    subgraph RawData["Raw Data Input"]
+        A["Multi-sensor Data<br/>TFRecord Format"]
+        B["RGB Sequences<br/>Multi-view Cameras"]
+        C["LiDAR Point Cloud<br/>3D Geometry"]
+        D["Object Trajectories<br/>Motion States"]
     end
     
-    subgraph Preprocessing["Data Preprocessing Pipeline"]
-        F["waymo_converter.py<br/>TFRecord → Dataset Format"]
-        G["Point Cloud Colorization<br/>RGB Projection & Interpolation"]
-        H["Trajectory Parsing<br/>SE(3) Pose Extraction"]
-        I["Camera Pose Estimation<br/>Structure-from-Motion"]
-        J["Temporal Synchronization<br/>Multi-modal Alignment"]
+    subgraph Preprocessing["Data Preprocessing"]
+        E["Format Conversion<br/>Standardization"]
+        F["Point Colorization<br/>RGB Fusion"]
+        G["Trajectory Parsing<br/>Pose Extraction"]
+        H["Multi-modal Alignment<br/>Temporal Sync"]
     end
     
     subgraph ConditionGen["Geometric Condition Generation"]
-        K["LiDAR Renderer<br/>waymo_render_lidar_pcd.py"]
-        L["Point Cloud Projection<br/>3D → 2D Mapping"]
-        M["Depth Map Generation<br/>Z-buffer Rendering"]
-        N["Visibility Mask<br/>Occlusion Handling"]
-        O["RGB-D Condition Images<br/>Pixel-level Geometry"]
+        I["LiDAR Rendering<br/>Depth Map"]
+        J["Occlusion Handling<br/>Visibility Mask"]
+        K["RGB-D Condition<br/>Pixel-level Geometry"]
     end
     
-    subgraph SceneConstruction["Scene Object Construction"]
-        P["Scene Class<br/>Container & Manager"]
-        Q["Dataset Class<br/>Data Access Interface"]
-        R["PointCloudProcessor<br/>Geometric Processing"]
-        S["Metadata Management<br/>Object Tracking Info"]
+    subgraph SceneConstruction["Scene Construction"]
+        L["Scene Manager<br/>Data Organization"]
+        M["Training Dataset<br/>Batch Interface"]
     end
     
-    A --> F
-    B --> F
-    C --> G
-    D --> H
+    A --> E
+    B --> E
+    C --> F
+    D --> G
+    
     E --> I
+    F --> I
+    G --> J
+    H --> K
     
-    F --> K
-    G --> L
-    H --> M
-    I --> N
-    J --> O
-    
-    K --> P
-    L --> Q
-    M --> R
-    N --> S
-    O --> S
+    I --> L
+    J --> L
+    K --> M
     
     classDef normalStyle fill:#FFFFFF,stroke:#999999,stroke-width:2px
     classDef importantStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
     
-    class A,F,K,P importantStyle
-    class B,C,D,E,G,H,I,J,L,M,N,O,Q,R,S normalStyle
+    class A,E,I,L importantStyle
+    class B,C,D,F,G,H,J,K,M normalStyle

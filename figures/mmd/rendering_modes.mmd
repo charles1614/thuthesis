@@ -1,58 +1,46 @@
 graph TD
-    subgraph RendererCore["StreetGaussianRenderer Core"]
-        A["StreetGaussianRenderer<br/>Unified Rendering Interface"]
-        A --> B["render_all()<br/>Complete Scene Composition"]
-        A --> C["render_background()<br/>Static Scene Components"] 
-        A --> D["render_object()<br/>Dynamic Actor Components"]
-        A --> E["render_sky()<br/>Environment Mapping"]
+    subgraph RendererCore["Renderer Core"]
+        A["Unified Interface<br/>Multi-modal Pipeline"]
+        A --> B["Complete Scene<br/>Composite Rendering"]
+        A --> C["Static Background<br/>Scene Geometry"] 
+        A --> D["Dynamic Objects<br/>Moving Actors"]
+        A --> E["Sky Environment<br/>Environment Map"]
     end
     
-    subgraph GaussianComponents["Gaussian Primitive Components"]
-        F["Background Gaussians<br/>𝒢_bkgd = {μ_i, Σ_i, α_i, c_i}"]
-        G["Actor Gaussians<br/>𝒢_obj^(k) = T_k(t) ∘ {μ_j, Σ_j, α_j, c_j}"]
-        H["Sky Gaussians/Cubemap<br/>Environment Representation"]
+    subgraph GaussianComponents["Gaussian Components"]
+        F["Background Gaussians<br/>Static Scene"]
+        G["Object Gaussians<br/>Dynamic Actors"]
+        H["Sky Gaussians<br/>Environment"]
     end
     
     subgraph RenderingKernel["Differentiable Rasterization"]
-        I["render_kernel_gsplat()<br/>GPU-accelerated Splatting"]
-        J["Covariance Computation<br/>Σ_2D = JΣ_3DJ^T"]
-        K["Alpha Blending<br/>C = Σ α_i c_i ∏(1-α_j)"]
-        L["Depth Computation<br/>D = Σ α_i d_i ∏(1-α_j)"]
+        I["GPU-Accelerated<br/>Splatting"]
+        J["Covariance Projection<br/>2D Mapping"]
+        K["Alpha Blending<br/>Color Accumulation"]
     end
     
-    subgraph OutputModes["Rendering Outputs"]
-        M["Complete Scene<br/>I_full = I_bkgd + I_obj + I_sky"]
-        N["Background Only<br/>I_bkgd"]
-        O["Objects Only<br/>I_obj"]
-        P["Sky Only<br/>I_sky"]
+    subgraph OutputModes["Rendering Output"]
+        L["Complete Scene<br/>Full Output"]
+        M["Background Only<br/>Static"]
+        N["Objects Only<br/>Dynamic"]
+        O["Sky Only<br/>Environment"]
     end
     
-    B --> M
-    C --> N
-    D --> O
-    E --> P
+    B --> L
+    C --> M
+    D --> N
+    E --> O
     
     F --> C
     G --> D
     H --> E
     
-    F --> B
-    G --> B
-    H --> B
-    
     B --> I
-    C --> I
-    D --> I
-    E --> I
-    
     I --> J
     J --> K
-    K --> L
     
     classDef normalStyle fill:#FFFFFF,stroke:#999999,stroke-width:2px
     classDef importantStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
-    classDef subgraphStyle fill:#F5F5F5,stroke:#CCCCCC,stroke-width:2px
     
-    class A,F,I,M importantStyle
-    class B,C,D,E,G,H,J,K,L,N,O,P normalStyle
-    class RendererCore,GaussianComponents,RenderingKernel,OutputModes subgraphStyle
+    class A,F,I,L importantStyle
+    class B,C,D,E,G,H,J,K,M,N,O normalStyle

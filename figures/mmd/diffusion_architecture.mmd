@@ -1,28 +1,25 @@
 graph LR
     subgraph InputLayer["Input Processing"]
-        A["Video Frames<br/>X ∈ R^(T×C×H×W)"] 
-        B["LiDAR Conditions<br/>C_lidar ∈ R^(T×3×H×W)"]
-        C["Camera Parameters<br/>(K, T_w2c, t)"]
+        A["Video Frames<br/>RGB Sequence"] 
+        B["LiDAR Condition<br/>Geometric Guidance"]
+        C["Camera Parameters<br/>Viewpoint Info"]
     end
     
     subgraph EncodingLayer["Feature Encoding"]
-        D["Temporal Encoder<br/>E_temporal"]
-        E["Spatial Encoder<br/>E_spatial"] 
-        F["Condition Encoder<br/>E_cond"]
-        G["Timestep Embedding<br/>γ(t) ∈ R^d"]
+        D["Temporal Encoder<br/>Time Modeling"]
+        E["Spatial Encoder<br/>Spatial Features"] 
+        F["Condition Encoder<br/>Geometric Condition"]
     end
     
-    subgraph DiffusionCore["3D UNet Diffusion Core"]
-        H["3D UNet Backbone<br/>ε_θ(x_t, t, c)"]
-        I["Spatiotemporal Attention<br/>MultiHead(Q,K,V)"]
-        J["Cross Attention<br/>Condition Integration"]
-        K["Residual Blocks<br/>VideoResBlock"]
+    subgraph DiffusionCore["DiT Diffusion Core"]
+        G["Transformer Backbone<br/>Denoising Network"]
+        H["Spatiotemporal Attention<br/>Long-range Dependency"]
+        I["Cross Attention<br/>Condition Fusion"]
     end
     
     subgraph OutputLayer["Denoising Output"]
-        L["Noise Prediction<br/>ε_pred ∈ R^(T×C×H×W)"]
-        M["Sampling Scheduler<br/>EDM/DDPM"]
-        N["Generated Video<br/>X_0 ~ p_θ(x|c)"]
+        J["Noise Prediction<br/>Diffusion Sampling"]
+        K["Generated Video<br/>High-Quality Output"]
     end
     
     A --> D
@@ -30,21 +27,18 @@ graph LR
     B --> F
     C --> F
     
-    D --> H
-    E --> H
-    F --> J
+    D --> G
+    E --> G
+    F --> I
+    
     G --> H
-    
     H --> I
-    I --> K
-    K --> J
-    J --> L
+    I --> J
     
-    L --> M
-    M --> N
+    J --> K
     
     classDef normalStyle fill:#FFFFFF,stroke:#999999,stroke-width:2px
     classDef importantStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
     
-    class A,H,L importantStyle
-    class B,C,D,E,F,G,I,J,K,M,N normalStyle
+    class A,G,J importantStyle
+    class B,C,D,E,F,H,I,K normalStyle

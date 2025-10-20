@@ -169,43 +169,11 @@ T_i(u,v,t) = \prod_{j=1}^{i-1} (1 - \alpha_j(t) G_j(u,v,t))
 
 在介绍ReGen的具体设计之前，有必要阐述本文方法的形成过程和技术定位。研究工作经历了从NeRF到3DGS，再到基于扩散模型的4DGS的技术演进，每一阶段都针对前一阶段的核心局限进行了系统性改进。
 
-\textbf{阶段一：NeRF方法及其局限}
+NeRF的连续函数表示理论上可以提供任意分辨率的渲染结果，这对于需要多尺度观察的自动驾驶仿真具有吸引力。然而，实际应用中暴露出三个根本性局限。首先是计算复杂度问题，每个像素的渲染需要沿光线进行密集采样并执行神经网络前向传播，单帧渲染耗时较长，与实时仿真要求存在显著差距。其次是可扩展性限制，单一MLP网络的表达容量有限，难以编码跨越数公里范围的城市级场景。即使采用Block-NeRF分块策略，也面临模型管理和边界衔接的复杂性。最后是动态建模的困难，NeRF的静态场景假设与自动驾驶环境的动态本质存在矛盾，基于形变场的扩展方法难以处理多物体独立运动和物体出现消失的情况。这些局限性促使研究者们转向更高效的显式表示方法。
 
-NeRF的连续函数表示理论上可以提供任意分辨率的渲染结果，这对于需要多尺度观察的自动驾驶仿真具有吸引力。然而，实际应用中暴露出三个根本性局限：
+3D Gaussian Splatting的显式点云表示带来了实质性突破，实现了实时渲染性能。通过动静分离策略，该方法能够有效处理动态驾驶场景重建。然而，3DGS在视点外推任务中暴露出严重缺陷。从训练数据未覆盖的新视角（如换道轨迹、俯视视角）渲染时，图像质量急剧下降，出现几何扭曲、物体缺失和视觉伪影。深入分析表明，这些问题源于三个方面：优化目标导致高斯基元排布特化于训练视角，缺乏全局几何一致性约束；离散点云在空间稀疏区域缺乏有效补全机制；纯数据驱动学习缺乏对场景结构的内在理解。这些分析表明，单纯依靠几何优化无法解决泛化问题，需要引入强大的生成先验知识。
 
-\begin{itemize}
-\item \textbf{计算复杂度}：每个像素的渲染需要沿光线进行64-256次采样并执行神经网络前向传播，渲染单张$1920 \times 1280$图像需要3-5秒，与实时仿真要求（$\geq$30 FPS）存在两个数量级差距。
-\item \textbf{可扩展性}：单一MLP网络的表达容量有限，难以编码跨越数公里范围的城市级场景。即使采用Block-NeRF分块策略，也面临模型管理和边界衔接的复杂性。
-\item \textbf{动态建模}：NeRF的静态场景假设与自动驾驶环境的动态本质存在矛盾，基于形变场的扩展方法难以处理多物体独立运动和物体出现消失的情况。
-\end{itemize}
-
-\textbf{阶段二：3DGS方法的突破与新挑战}
-
-3D Gaussian Splatting的显式点云表示带来了实质性突破——渲染速度提升至100+ FPS，实现了实时仿真。通过动静分离策略，能够有效处理动态驾驶场景重建。
-
-然而，3DGS在视点外推任务中暴露出严重缺陷。从训练数据未覆盖的新视角（如换道轨迹、俯视视角）渲染时，图像质量急剧下降，出现几何扭曲、物体缺失和视觉伪影。分析表明：
-
-\begin{itemize}
-\item \textbf{过拟合训练视点}：优化目标导致高斯基元排布特化于训练视角，缺乏全局几何一致性约束。
-\item \textbf{离散表示的插值局限}：离散点云在空间稀疏区域缺乏有效补全机制。
-\item \textbf{先验知识缺失}：纯数据驱动学习缺乏对场景结构的内在理解。
-\end{itemize}
-
-单纯依靠几何优化无法解决泛化问题，需引入生成先验。
-
-\textbf{阶段三：Diffusion-based 4DGS方法}
-
-扩散模型在大规模预训练中内隐学习了丰富的视觉先验，包括场景结构合理性、物体外观一致性和光照真实性。关键思路是利用扩散模型为未覆盖视角生成高质量"伪真值"作为监督信号，引导4DGS训练。
-
-核心挑战在于几何可控性——无条件生成会导致几何不可控。因此采用LiDAR几何作为条件：LiDAR提供稀疏但准确的3D骨架，扩散模型填充视觉细节。
-
-Diffusion-based 4DGS框架的关键设计包括：
-
-\begin{itemize}
-\item \textbf{几何条件编码}：将LiDAR点云渲染为深度图并编码为RGB通道，既保留几何信息又与扩散模型输入格式兼容。
-\item \textbf{训练推理解耦}：扩散模型仅在训练阶段生成监督信号，推理时完全依赖已优化的4DGS，实现先验增强与部署效率的平衡。
-\item \textbf{自适应监督策略}：通过训练自由引导和自适应采样调度，实现监督强度随训练进程动态调整，避免训练不稳定。
-\end{itemize}
+扩散模型在大规模预训练中内隐学习了丰富的视觉先验，包括场景结构合理性、物体外观一致性和光照真实性。关键思路是利用扩散模型为未覆盖视角生成高质量"伪真值"作为监督信号，引导4DGS训练。核心挑战在于几何可控性——无条件生成会导致几何不可控。因此本文采用LiDAR几何作为条件：LiDAR提供稀疏但准确的3D骨架，扩散模型在此基础上填充视觉细节。基于扩散模型的4DGS框架具有三个关键设计特征。在几何条件编码方面，将LiDAR点云渲染为深度图并编码为RGB通道，既保留几何信息又与扩散模型输入格式兼容。在训练推理解耦方面，扩散模型仅在训练阶段生成监督信号，推理时完全依赖已优化的4DGS，实现了先验增强与部署效率的平衡。在自适应监督策略方面，通过训练自由引导和自适应采样调度，实现监督强度随训练进程动态调整，有效避免了训练不稳定的问题。
 
 \begin{table}[htbp]
 \centering
@@ -216,9 +184,9 @@ Diffusion-based 4DGS框架的关键设计包括：
 \toprule
 \textbf{技术方法} & \textbf{核心优势} & \textbf{主要局限} & \textbf{关键发现} \\
 \midrule
-NeRF & 连续表示，质量高 & 渲染慢（3-5秒/帧）；扩展性差；动态建模难 & 不适合实时动态场景 \\
+NeRF & 连续表示，质量高 & 渲染慢；扩展性差；动态建模难 & 不适合实时动态场景 \\
 \midrule
-3DGS & 实时渲染（>100 FPS），有效动静分离 & 视点外推弱；几何扭曲；缺乏先验 & 需引入生成先验 \\
+3DGS & 实时渲染，有效动静分离 & 视点外推弱；几何扭曲；缺乏先验 & 需引入生成先验 \\
 \midrule
 3DGS + Diffusion & 初步引入先验 & 效果有限；不稳定 & 需系统性设计 \\
 \midrule
@@ -231,37 +199,15 @@ NeRF & 连续表示，质量高 & 渲染慢（3-5秒/帧）；扩展性差；动
 
 \subsection{整体框架设计}
 
-ReGen的核心设计理念是利用强大但计算昂贵的视频扩散模型生成高质量监督信号，引导高效但泛化能力有限的4D高斯溅射进行优化，实现两者的优势互补。整个框架分为两个主要阶段：
+ReGen的核心设计理念是利用强大但计算昂贵的视频扩散模型生成高质量监督信号，引导高效但泛化能力有限的4D高斯溅射进行优化，实现两者的优势互补。整个框架采用两阶段训练策略。在第一阶段，我们在大规模驾驶数据上训练一个以LiDAR几何条件为引导的视频扩散模型，该模型学习从稀疏的几何信息（LiDAR点云渲染）生成高质量、时间连贯的驾驶视频。在第二阶段，利用预训练的扩散模型为新视点生成高质量的"伪真值"图像，以此作为监督信号指导4DGS模型的训练，从而提升其视点外推能力。
 
-\textbf{阶段1：可控视频扩散模型预训练}
-在大规模驾驶数据上训练一个以LiDAR几何条件为引导的视频扩散模型。该模型学习从稀疏的几何信息（LiDAR点云渲染）生成高质量、时间连贯的驾驶视频。
-
-\textbf{阶段2：4DGS扩散监督优化}
-利用预训练的扩散模型为新视点生成高质量的"伪真值"图像，以此作为监督信号指导4DGS模型的训练，从而提升其视点外推能力。
-
-这种设计的核心优势在于：（1）扩散模型提供了强大的视觉先验和生成能力；（2）4DGS保持了实时渲染的效率；（3）扩散生成的监督信号桥接了两者，实现了"鱼与熊掌兼得"。
+这种设计的核心优势体现在三个方面。首先，扩散模型通过大规模预训练获得了强大的视觉先验和生成能力，能够为未见视点提供合理的场景内容补全。其次，4DGS保持了实时渲染的计算效率，确保系统在推理阶段的实用性。最后，扩散生成的监督信号有效桥接了两者，使得系统在训练阶段充分利用生成先验，而在部署阶段保持高效渲染，实现了生成质量与计算效率的最优平衡。
 
 \subsection{数据流与训练策略概览}
 
-整个训练过程涉及多种类型的数据和处理流程：
+整个训练过程涉及多种类型的数据和处理流程。系统的输入数据主要包括五个方面：来自多视角相机的RGB图像序列提供视觉真值；64线激光雷达采集的LiDAR点云提供几何约束和深度监督；3D边界框序列描述物体轨迹，用于动静分离和物体跟踪；相机标定数据包含内外参数，确保几何一致性；天空掩码通过Grounding DINO + SAM生成，用于天空区域的特殊处理。
 
-\textbf{输入数据类型：}
-\begin{itemize}
-\item \textbf{RGB图像序列}：来自多视角相机的图像序列，提供视觉真值
-\item \textbf{LiDAR点云}：64线激光雷达数据，提供几何约束和深度监督
-\item \textbf{物体轨迹}：3D边界框序列，用于动静分离和物体跟踪
-\item \textbf{相机标定}：内外参数，确保几何一致性
-\item \textbf{天空掩码}：通过Grounding DINO + SAM生成，用于天空区域的特殊处理
-\end{itemize}
-
-\textbf{训练数据流程：}
-\begin{enumerate}
-\item \textbf{几何条件生成}：将LiDAR点云投影并渲染为RGB-D条件图像
-\item \textbf{扩散模型预训练}：使用RGB图像和LiDAR条件训练可控视频生成模型
-\item \textbf{新视点轨迹生成}：为训练场景创建虚拟的换道、转弯等新轨迹
-\item \textbf{伪真值生成}：扩散模型基于新轨迹的LiDAR条件生成高质量视频
-\item \textbf{4DGS联合训练}：同时使用真实图像和扩散生成的伪真值训练4DGS
-\end{enumerate}
+训练数据流程遵循一个清晰的五步处理链条。首先，将LiDAR点云投影并渲染为RGB-D条件图像，作为扩散模型的几何条件。随后，使用RGB图像和LiDAR条件训练可控视频生成模型，使其学习从几何骨架到完整视觉场景的映射关系。在扩散模型训练完成后，为训练场景创建虚拟的换道、转弯等新视点轨迹，这些轨迹偏离原始训练视点分布，模拟实际应用中的视点外推需求。接下来，扩散模型基于新轨迹的LiDAR条件生成高质量视频，作为"伪真值"监督信号。最后，在4DGS的优化过程中同时使用真实图像和扩散生成的伪真值进行联合训练，通过这种方式将扩散模型的生成先验有效迁移到4DGS中，提升其在未见视点上的泛化能力。
 
 \section{几何与条件控制}
 
@@ -322,27 +268,20 @@ LiDAR提供的稀疏深度用于约束4DGS的几何重建：
 
 其中$\mathcal{B}_j(t)$是第$j$个物体在时刻$t$的3D边界框。
 
-\textbf{动态物体点云：}
-每个跟踪物体的点云单独处理：
+对于动态物体，每个跟踪物体的点云单独处理，提取属于特定物体边界框$\mathcal{B}_j(t)$内的所有点：
 
 \begin{equation}
 \mathcal{P}_{\text{obj}}^{(j)}(t) = \{\mathbf{p}_i \in \mathcal{P}_t : \mathbf{p}_i \in \mathcal{B}_j(t)\}
 \label{eq:object_points}
 \end{equation}
 
-这种分离策略的优势在于：（1）静态背景可以跨时间聚合，提高密度；（2）动态物体保持时间独立性，避免运动模糊；（3）支持物体级别的编辑和控制。
+这种动静分离策略具有三个关键优势。首先，静态背景可以跨时间聚合，显著提高点云密度，从而获得更加完整的几何表示。其次，动态物体保持时间独立性，避免了时间聚合带来的运动模糊问题。最后，这种分离策略支持物体级别的编辑和控制，为后续的场景操作提供了灵活性。
 
 \subsection{天空区域的智能处理}
 
-天空区域在自动驾驶场景中具有特殊性：它缺乏明确的几何结构，且在不同视点下变化复杂。我们采用了基于视觉语言模型的智能分割策略：
+天空区域在自动驾驶场景中具有特殊性：它缺乏明确的几何结构，且在不同视点下变化复杂。我们采用了基于视觉语言模型的智能分割策略，该策略采用两阶段流程实现准确的天空区域分割。首先使用Grounding DINO通过文本提示"sky"检测天空区域的粗略边界框，然后利用SAM（Segment Anything Model）基于检测框生成精确的像素级天空掩码。
 
-\textbf{两阶段分割流程：}
-\begin{enumerate}
-\item \textbf{Grounding DINO检测}：使用文本提示"sky"检测天空区域的粗略边界框
-\item \textbf{SAM精细分割}：基于检测框生成精确的像素级天空掩码
-\end{enumerate}
-
-具体实现中，我们使用以下策略确保天空检测的准确性：
+为了确保天空检测的准确性，我们在具体实现中引入了空间约束策略：
 
 \begin{figure}[!b]
   \begin{tmpbox}
@@ -375,34 +314,22 @@ masks, _, _ = sam_predictor.predict_torch(
   \label{fig:sky-detection-code}
 \end{figure}
 
-\textbf{天空区域的三种表示策略：}
+我们针对不同场景特性设计了三种天空表示策略。高斯天空模型使用独立的高斯基元集合表示天空，适用于天空区域较大且需要精细建模的场景。立方体贴图策略使用环境贴图表示天空，计算效率高但表达能力相对有限，适合快速渲染场景。背景集成策略将天空直接集成到背景高斯模型中，适用于天空区域较小或天空不是主要视觉关注点的场景。
 
-1. \textbf{高斯天空模型}：使用独立的高斯基元集合表示天空，适用于天空区域较大的场景
-2. \textbf{立方体贴图}：使用环境贴图表示天空，计算效率高但表达能力有限
-3. \textbf{背景集成}：将天空直接集成到背景高斯模型中，适用于天空区域较小的场景
-
-\textbf{天空损失的设计原理：}
-
-针对天空区域的特殊性质，我们设计了基于不透明度分布的天空损失：
+针对天空区域的特殊性质，我们设计了基于不透明度分布的天空损失函数：
 
 \begin{equation}
 \mathcal{L}_{\text{sky}} = \mathbb{E}_{(u,v) \in \mathcal{M}_{\text{sky}}} [-\log(1-\alpha(u,v))] + \mathbb{E}_{(u,v) \in \mathcal{M}_{\text{non-sky}}} [H(\alpha(u,v))]
 \label{eq:sky_loss_design}
 \end{equation}
 
-其中$H(\alpha) = -\alpha \log \alpha - (1-\alpha) \log(1-\alpha)$是二元熵函数。这种设计鼓励：
-- 天空区域的低不透明度（$\alpha \rightarrow 0$）
-- 非天空区域的确定性不透明度（$\alpha \rightarrow 0$ 或 $\alpha \rightarrow 1$）
+其中$H(\alpha) = -\alpha \log \alpha - (1-\alpha) \log(1-\alpha)$是二元熵函数。这种设计的核心思想是鼓励天空区域呈现低不透明度（$\alpha \rightarrow 0$），使得天空颜色能够透过高斯基元直接显示，同时促使非天空区域保持确定性的不透明度分布（$\alpha \rightarrow 0$ 或 $\alpha \rightarrow 1$），从而在几何建模中实现清晰的前景与背景分离。
 
 \subsection{可控视频扩散模型设计}
 
-我们的视频扩散模型采用了多层次的条件控制机制，确保生成内容的几何一致性和视觉质量：
+我们的视频扩散模型采用了多层次的条件控制机制，确保生成内容的几何一致性和视觉质量。该机制包含三个层次的条件输入：像素级几何条件通过LiDAR渲染的RGB-D图像提供逐像素的几何约束，全局场景条件通过相机参数和场景元数据提供全局上下文信息，时间条件通过帧索引和时间戳确保生成视频的时间连贯性。
 
-\textbf{像素级几何条件}：LiDAR渲染的RGB-D图像提供逐像素的几何约束
-\textbf{全局场景条件}：相机参数和场景元数据提供全局上下文
-\textbf{时间条件}：帧索引和时间戳确保时间连贯性
-
-条件编码过程可以表示为：
+这些多层次条件的编码过程可以表示为：
 
 \begin{align}
 \mathbf{h}_{\text{pixel}} &= \text{Conv2D}(\mathbf{C}_{\text{lidar}}) \\
@@ -418,8 +345,6 @@ masks, _, _ = sam_predictor.predict_torch(
   \label{fig:diffusion-architecture}
 \end{figure}
 
-\textbf{时空注意力机制：}
-
 为了确保生成视频的时间连贯性，我们设计了分解式时空注意力机制：
 
 \begin{equation}
@@ -427,10 +352,7 @@ masks, _, _ = sam_predictor.predict_torch(
 \label{eq:factorized_attention}
 \end{equation}
 
-这种分解设计的优势：
-- 计算复杂度从$O(T^2H^2W^2)$降低到$O(TH^2W^2 + T^2HW)$
-- 更好地建模空间和时间的不同特性
-- 支持不同分辨率的高效处理
+这种分解设计具有显著的优势。首先，计算复杂度从完全时空注意力的$O(T^2H^2W^2)$降低到$O(TH^2W^2 + T^2HW)$，使得模型能够处理更长的视频序列。其次，空间注意力和时间注意力的分离使得模型能够更好地建模空间和时间的不同特性，空间注意力专注于帧内的局部结构，时间注意力专注于跨帧的运动模式。最后，这种设计支持不同分辨率的高效处理，便于在不同计算资源约束下进行灵活部署。
 
 \section{训练流程与扩散监督}
 
@@ -445,69 +367,34 @@ masks, _, _ = sam_predictor.predict_torch(
 
 \subsection{分阶段训练策略}
 
-我们的训练策略采用了精心设计的分阶段方法，每个阶段都有明确的目标和数据需求：
+我们的训练策略采用了精心设计的分阶段方法，每个阶段都有明确的目标和数据需求。
 
-\textbf{阶段1：扩散模型预训练（25-30 epochs）}
+在第一阶段的扩散模型预训练中，使用RGB视频序列$\mathbf{X} = \{\mathbf{x}_t\}_{t=1}^{T}$、RGB-D格式的LiDAR条件$\mathbf{C} = \{\mathbf{c}_t\}_{t=1}^{T}$，以及确保几何一致性的相机内外参数进行若干轮训练。训练目标采用标准的去噪扩散概率模型损失函数：
 
-\textbf{数据需求：}
-\begin{itemize}
-\item RGB视频序列：$\mathbf{X} = \{\mathbf{x}_t\}_{t=1}^{T}$，$T=25$帧
-\item LiDAR条件：$\mathbf{C} = \{\mathbf{c}_t\}_{t=1}^{T}$，RGB-D格式
-\item 相机参数：内外参数用于几何一致性
-\end{itemize}
-
-\textbf{训练目标：}
 \begin{equation}
 \mathcal{L}_{\text{diffusion}} = \mathbb{E}_{t,\epsilon,\mathbf{x}_0,\mathbf{C}} \left[ \|\epsilon - \epsilon_\theta(\sqrt{\bar{\alpha}_t} \mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t} \epsilon, \mathbf{C}, t)\|_2^2 \right]
 \label{eq:diffusion_pretraining}
 \end{equation}
 
-\textbf{关键技术：}
-- 条件丢弃（Condition Dropout）：$p_{\text{drop}} = 0.1$，支持分类器自由引导
-- 时空注意力：确保生成视频的时间连贯性
-- 多尺度训练：支持不同分辨率的生成
+该阶段采用的关键技术包括：以适当概率进行条件丢弃以支持分类器自由引导，应用时空注意力机制确保生成视频的时间连贯性，以及采用多尺度训练策略支持不同分辨率的生成需求。
 
-\textbf{阶段2：4DGS基础训练（前7000次迭代）}
+在第二阶段的4DGS基础训练中，初期阶段专注于建立稳定的几何表示。该阶段使用训练视点$\mathcal{V}_{\text{train}}$（包含相机参数和真实图像）、用于高斯基元初始化的彩色点云、用于动静分离的物体轨迹，以及提供几何监督的LiDAR深度数据。训练目标结合了重建损失、深度监督和天空区域约束：
 
-\textbf{数据需求：}
-\begin{itemize}
-\item 训练视点：$\mathcal{V}_{\text{train}}$，包含相机参数和真实图像
-\item 彩色点云：用于高斯基元初始化
-\item 物体轨迹：用于动静分离
-\item LiDAR深度：用于几何监督
-\end{itemize}
-
-\textbf{训练目标：}
 \begin{equation}
 \mathcal{L}_{\text{base}} = \mathcal{L}_{\text{recon}} + \lambda_{\text{depth}} \mathcal{L}_{\text{depth}} + \lambda_{\text{sky}} \mathcal{L}_{\text{sky}}
 \label{eq:base_training}
 \end{equation}
 
-\textbf{关键操作：}
-- 自适应密化：每100次迭代进行一次，基于梯度和几何特征
-- 球谐函数递增：每1000次迭代增加球谐函数阶数
-- 不透明度重置：每3000次迭代重置低质量高斯基元
+该阶段的关键操作包括：周期性地基于梯度和几何特征进行自适应密化，逐步递增球谐函数阶数以提升外观建模能力，定期重置低质量高斯基元以维持模型质量。
 
-\textbf{阶段3：扩散监督训练（7000-30000次迭代）}
+在第三阶段的扩散监督训练中，系统同时使用原始训练数据（继续进行真实图像的重建训练）、虚拟的换道和转弯等新视点轨迹、扩散模型生成的高质量伪真值作为新视点监督信号，以及用于掩码引导和损失计算的天空掩码。训练目标在重建损失的基础上增加了新视点损失和正则化项：
 
-\textbf{数据需求：}
-\begin{itemize}
-\item 原始训练数据：继续使用真实图像进行重建训练
-\item 新视点轨迹：虚拟的换道、转弯等轨迹
-\item 扩散生成的伪真值：高质量的新视点监督信号
-\item 天空掩码：用于掩码引导和损失计算
-\end{itemize}
-
-\textbf{训练目标：}
 \begin{equation}
 \mathcal{L}_{\text{train}} = \mathcal{L}_{\text{recon}} + \lambda_{\text{novel}} \mathcal{L}_{\text{novel}} + \lambda_{\text{reg}} \mathcal{L}_{\text{reg}}
 \label{eq:diffusion_supervised_training}
 \end{equation}
 
-\textbf{关键策略：}
-- 渐进式采样：在特定迭代点（7000, 12000, 17000, 22000）进行扩散采样
-- 引导强度衰减：从强引导（$s=0.7$）逐渐减弱到弱引导（$s=0.3$）
-- 掩码引导：在15000次迭代后启用，只在渲染质量差的区域应用扩散监督
+该阶段采用的关键策略包括：在训练的关键节点进行渐进式扩散采样，引导强度从初始的强引导逐渐衰减到后期的弱引导，以及在训练后期启用掩码引导机制，仅在渲染质量较差的区域应用扩散监督以提高训练效率。
 
 \begin{figure}[htbp]
   \centering
@@ -518,30 +405,24 @@ masks, _, _ = sam_predictor.predict_torch(
 
 \subsection{训练自由引导机制}
 
-我们提出的训练自由引导机制是ReGen的核心创新之一。与传统的分类器自由引导不同，我们同时使用几何条件和当前4DGS渲染结果作为引导信号：
+我们提出的训练自由引导机制是ReGen的核心创新之一。与传统的分类器自由引导不同，该机制同时使用几何条件和当前4DGS渲染结果作为双重引导信号：
 
 \begin{equation}
 \epsilon_{\text{guided}} = \epsilon_{\text{uncond}} + w_{\text{geom}} \cdot (\epsilon_{\text{geom}} - \epsilon_{\text{uncond}}) + w_{\text{render}} \cdot (\epsilon_{\text{render}} - \epsilon_{\text{uncond}})
 \label{eq:dual_guidance}
 \end{equation}
 
-其中：
-- $\epsilon_{\text{geom}}$：基于LiDAR几何条件的噪声预测
-- $\epsilon_{\text{render}}$：基于当前4DGS渲染结果的噪声预测
-- $w_{\text{geom}}, w_{\text{render}}$：自适应调整的引导权重
+其中$\epsilon_{\text{geom}}$表示基于LiDAR几何条件的噪声预测，$\epsilon_{\text{render}}$表示基于当前4DGS渲染结果的噪声预测，$w_{\text{geom}}$和$w_{\text{render}}$是自适应调整的引导权重。这两个权重在训练过程中动态调整，以平衡几何约束和视觉保真度：
 
-\textbf{自适应权重调整：}
 \begin{align}
 w_{\text{geom}}(k) &= w_{\text{geom}}^{\text{init}} \cdot (1 + \cos(\pi k / K)) / 2 \\
 w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\text{decay}})
 \label{eq:adaptive_guidance_weights}
 \end{align}
 
-这种设计确保了训练初期的强几何约束和后期的精细调优。
+这种自适应权重设计确保了训练初期保持强几何约束以建立正确的空间结构，而在训练后期转向精细调优以提升视觉质量。
 
-\textbf{掩码引导的精确控制：}
-
-在训练后期（>15000次迭代），我们引入掩码引导机制，只在渲染质量较差的区域应用扩散监督：
+在训练后期，我们进一步引入掩码引导机制，通过评估当前渲染质量选择性地应用扩散监督，仅在渲染质量较差的区域进行强化，从而提高训练效率并避免过度监督导致的模型退化：
 
 \begin{equation}
 \mathbf{M}_{\text{guide}}(u,v) = \begin{cases}
@@ -665,16 +546,14 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 
 \subsection{几何一致性约束}
 
-\textbf{LiDAR深度约束}：
-利用LiDAR提供的稀疏但准确的深度信息约束4DGS的几何重建：
+几何一致性约束通过多种方式确保4DGS重建的准确性和合理性。LiDAR深度约束利用激光雷达提供的稀疏但准确的深度信息监督4DGS的几何重建质量：
 
 \begin{equation}
 \mathcal{L}_{\text{depth}} = \frac{1}{|\mathcal{M}_{\text{lidar}}|} \sum_{(u,v) \in \mathcal{M}_{\text{lidar}}} \text{SmoothL1}(D_{\text{render}}(u,v), D_{\text{lidar}}(u,v))
 \label{eq:lidar_depth_constraint}
 \end{equation}
 
-\textbf{物体边界约束}：
-确保动态物体的高斯基元不会泄漏到其边界框外：
+物体边界约束进一步确保动态物体的高斯基元保持在其对应边界框内，避免几何泄漏导致的重建伪影：
 
 \begin{equation}
 \mathcal{L}_{\text{bbox}} = \sum_{i=1}^{N_{\text{obj}}} \mathbb{E}_{\mathbf{p} \notin \mathcal{B}_i} [\alpha_i(\mathbf{p})] + \mathbb{E}_{\mathbf{p} \in \mathcal{B}_i} [H(\alpha_i(\mathbf{p}))]
@@ -683,16 +562,14 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 
 \subsection{尺度和形状正则化}
 
-\textbf{各向异性约束}：
-防止高斯基元退化为过度拉伸的椭球体：
+尺度和形状正则化通过约束高斯基元的几何参数来提升重建质量。各向异性约束防止高斯基元退化为过度拉伸的椭球体，通过惩罚尺度参数的极端不均匀性来保持合理的形状分布：
 
 \begin{equation}
 \mathcal{L}_{\text{anisotropy}} = \mathbb{E}_{g \in \mathcal{G}} \left[ \frac{\max(\mathbf{s}_g)}{\min(\mathbf{s}_g)} - 1 \right]^2
 \label{eq:anisotropy_regularization}
 \end{equation}
 
-\textbf{紧凑性约束}：
-鼓励高斯基元保持紧凑的形状：
+紧凑性约束则鼓励高斯基元保持紧凑的形状，避免占据过大的空间体积，从而提高场景表示的精确性：
 
 \begin{equation}
 \mathcal{L}_{\text{compact}} = \mathbb{E}_{g \in \mathcal{G}} \left[ \|\mathbf{s}_g\|_2^2 \right]
@@ -705,55 +582,17 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 
 \subsection{数据流向分析}
 
-整个训练过程的数据依赖关系可以用以下流向图表示：
+整个训练过程的数据依赖关系呈现为多层次的处理流程。首先，原始数据经过预处理阶段，将TFRecord格式的多模态数据转换为标准化的训练输入。具体而言，RGB图像序列、LiDAR点云、物体轨迹和相机标定参数从原始数据中提取，随后通过Grounding DINO和SAM模型生成天空掩码，并将LiDAR点云与RGB图像融合形成彩色点云，最终结合相机参数生成LiDAR条件图像（RGB-D格式）。
 
-\textbf{原始数据 → 预处理数据：}
-\begin{itemize}
-\item Waymo TFRecord → RGB图像序列 + LiDAR点云 + 物体轨迹 + 相机标定
-\item RGB图像 + Grounding DINO + SAM → 天空掩码
-\item LiDAR点云 + RGB图像 → 彩色点云
-\item 彩色点云 + 相机参数 → LiDAR条件图像（RGB-D）
-\end{itemize}
-
-\textbf{预处理数据 → 训练数据：}
-\begin{itemize}
-\item RGB序列 + LiDAR条件 → 扩散模型训练对
-\item 彩色点云 + 物体轨迹 → 4DGS初始化
-\item 原始轨迹 + 几何变换 → 新视点轨迹
-\item 新视点轨迹 + LiDAR条件 → 扩散采样输入
-\end{itemize}
-
-\textbf{训练数据 → 监督信号：}
-\begin{itemize}
-\item 真实RGB图像 → 重建损失监督
-\item LiDAR深度 → 几何一致性监督  
-\item 扩散生成图像 → 新视点监督信号
-\item 天空掩码 → 天空区域损失监督
-\end{itemize}
+在预处理数据向训练数据的转换过程中，RGB序列与LiDAR条件结合形成扩散模型的训练对，彩色点云与物体轨迹共同用于4DGS的初始化，原始轨迹经过几何变换生成新视点轨迹，这些新视点轨迹与LiDAR条件一起构成扩散采样的输入。训练数据最终转化为多种监督信号：真实RGB图像提供重建损失监督，LiDAR深度信息确保几何一致性，扩散生成图像为新视点提供监督信号，天空掩码则专门用于天空区域的损失监督。
 
 \subsection{训练调度的精确设计}
 
-我们的训练调度采用了精心设计的多阶段策略：
+我们的训练调度采用了精心设计的多阶段策略，确保模型能够稳定收敛并逐步提升性能。在预热阶段，系统仅使用重建损失来建立基础几何结构，采用较低的学习率，并禁用密化操作以避免早期训练的不稳定性。
 
-\textbf{迭代0-500：预热阶段}
-- 仅使用重建损失，建立基础几何结构
-- 较低的学习率：$\eta_{\text{pos}} = 1.6 \times 10^{-4}$
-- 禁用密化操作，避免早期不稳定
+基础训练阶段启用完整的重建损失和正则化项，实施自适应密化策略，周期性地进行密化操作。同时，球谐函数的阶数采用递增策略，逐步提升表示能力。
 
-\textbf{迭代500-7000：基础训练阶段}  
-- 启用完整的重建损失和正则化项
-- 自适应密化：每100次迭代
-- 球谐函数递增：每1000次迭代从0阶增加到3阶
-
-\textbf{迭代7000+：扩散监督阶段}
-- 在特定迭代点进行扩散采样：$\{7000, 12000, 17000, 22000\}$
-- 渐进式引导强度：$s \in \{0.7, 0.5, 0.3, 0.1\}$
-- 新视点采样概率：$p_{\text{novel}} = 0.1$
-
-\textbf{迭代15000+：掩码引导阶段}
-- 启用掩码引导，精细化训练
-- 降低密化频率，稳定几何结构
-- 引入时间一致性约束
+扩散监督阶段在训练的关键节点进行扩散采样，采用从强到弱渐进式调整的引导强度，新视点采样以适当概率进行。最后，在掩码引导阶段，系统启用掩码引导进行精细化训练，降低密化频率以稳定几何结构，并引入时间一致性约束。
 
 \section{理论分析与性能保证}
 
@@ -776,22 +615,16 @@ w_{\text{render}}(k) &= w_{\text{render}}^{\text{init}} \cdot \exp(-k / \tau_{\t
 
 \subsection{计算复杂度的全面分析}
 
-\textbf{扩散模型复杂度：}
-- 预训练：$O(E \cdot B \cdot T \cdot K \cdot H \cdot W \cdot D_{\text{model}})$
-- 推理采样：$O(K \cdot T \cdot H \cdot W \cdot D_{\text{model}})$
+系统的计算复杂度主要来源于扩散模型和4DGS两个核心组件。扩散模型的预训练阶段复杂度为$O(E \cdot B \cdot T \cdot K \cdot H \cdot W \cdot D_{\text{model}})$，其中$E$表示训练轮数，$B$为批次大小，$T$为时间步数，$K$为去噪步数，$H \times W$为图像分辨率，$D_{\text{model}}$为模型维度。推理采样阶段的复杂度为$O(K \cdot T \cdot H \cdot W \cdot D_{\text{model}})$，相比预训练阶段显著降低。
 
-\textbf{4DGS复杂度：}
-- 渲染：$O(N_g \cdot H \cdot W \cdot \log N_g)$
-- 密化：$O(N_g \cdot D_{\text{gaussian}})$
-- 梯度计算：$O(N_g \cdot H \cdot W)$
+4DGS组件的计算复杂度主要体现在渲染、密化和梯度计算三个环节。渲染操作的复杂度为$O(N_g \cdot H \cdot W \cdot \log N_g)$，其中$N_g$为高斯数量，对数项来源于排序操作。密化操作的复杂度为$O(N_g \cdot D_{\text{gaussian}})$，梯度计算的复杂度为$O(N_g \cdot H \cdot W)$。
 
-\textbf{总体训练复杂度：}
+综合上述分析，系统的总体训练复杂度可表示为：
 \begin{equation}
 \mathcal{O}_{\text{total}} = O(I \cdot (N_g \cdot H \cdot W + N_{\text{sample}} \cdot K \cdot T \cdot H \cdot W \cdot D_{\text{model}}))
 \label{eq:total_complexity}
 \end{equation}
-
-其中$I$是总迭代数，$N_{\text{sample}}$是扩散采样频率。
+其中$I$是总迭代数，$N_{\text{sample}}$是扩散采样频率。该复杂度表达式表明，系统的主要计算开销来自于4DGS的渲染操作和扩散模型的采样过程。
 
 \section{本章小结}
 

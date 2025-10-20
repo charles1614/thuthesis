@@ -1,34 +1,34 @@
 %%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#FFFFFF','primaryTextColor':'#000','primaryBorderColor':'#999999','lineColor':'#666','secondaryColor':'#F5F5F5','tertiaryColor':'#FFFFFF','noteBkgColor':'#E3F2FD','noteBorderColor':'#1976D2','noteTextColor':'#000','actorBkg':'#FFFFFF','actorBorder':'#999999','actorTextColor':'#000','actorLineColor':'#666','signalColor':'#666','signalTextColor':'#000','labelBoxBkgColor':'#FFFFFF','labelBoxBorderColor':'#999999','labelTextColor':'#000','loopTextColor':'#000','activationBorderColor':'#1976D2','activationBkgColor':'#E3F2FD','sequenceNumberColor':'#FFF'}}}%%
 sequenceDiagram
-    participant DL as DataLoader<br/>Camera & Conditions
-    participant GS as 4D Gaussian Model<br/>StreetGaussianModel
-    participant RN as Renderer<br/>StreetGaussianRenderer
-    participant VD as Video Diffusion<br/>DiffusionEngine
-    participant OP as Optimizer<br/>Adam/AdamW
+    participant DL as Data Loader
+    participant GS as 4DGS Model
+    participant RN as Renderer
+    participant VD as Video Diffusion
+    participant OP as Optimizer
     
     Note over DL,OP: Training Iteration Loop
     
-    DL->>+GS: Load viewpoint camera & geometric conditions
-    GS->>+RN: Current 4DGS parameters θ_t
-    RN->>RN: Render current viewpoint I_render = R(θ_t, π)
-    RN->>-GS: Return rendering results
+    DL->>+GS: Load viewpoint & conditions
+    GS->>+RN: Current 4DGS parameters
+    RN->>RN: Render current view
+    RN->>-GS: Return rendered image
     
-    alt Training Viewpoint (π ∈ V_train)
-        GS->>OP: Compute reconstruction loss L_recon
-        Note right of OP: L_recon = L_L1 + λ_ssim L_SSIM + λ_lpips L_LPIPS
-    else Novel Viewpoint (π ∉ V_train)
-        RN->>+VD: Current render as training-free guidance
-        VD->>VD: Generate pseudo GT: I_pseudo = D_φ(z_T, C_novel)
-        VD->>-OP: Pseudo ground truth supervision
-        OP->>OP: Compute distillation loss L_novel
-        Note right of OP: L_novel = ||I_render - I_pseudo||_1 + λ(1 - SSIM)
+    alt Training Viewpoint
+        GS->>OP: Compute reconstruction loss
+        Note right of OP: Ground truth supervision
+    else Novel Viewpoint
+        RN->>+VD: Current render as guidance
+        VD->>VD: Generate pseudo GT
+        VD->>-OP: Pseudo GT supervision
+        OP->>OP: Compute guidance loss
+        Note right of OP: Diffusion prior guidance
     end
     
-    OP->>GS: Update Gaussian parameters: θ_{t+1} = θ_t - η∇L
+    OP->>GS: Update Gaussian parameters
     
-    alt Densification Condition (iter < densify_until_iter)
-        GS->>GS: Adaptive densification & pruning
-        Note right of GS: Split: ||∇_μ L|| > τ_grad ∧ max(s) > τ_scale<br/>Clone: ||∇_μ L|| > τ_grad ∧ max(s) ≤ τ_scale<br/>Prune: α < τ_opacity
+    alt Densification Phase
+        GS->>GS: Adaptive densification
+        Note right of GS: Dynamic geometry adjustment
     end
     
     Note over DL,OP: Continue until convergence

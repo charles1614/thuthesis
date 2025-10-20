@@ -1,51 +1,41 @@
 graph TD
-    subgraph GradientAnalysis["Gradient-based Analysis"]
-        A["Gradient Accumulation<br/>∇_μ L_accumulated"]
-        A --> B["Gradient Statistics<br/>g = ∇_accum / denom"]
-        B --> C["High Gradient Regions<br/>||g|| > τ_grad"]
+    subgraph GradientAnalysis["Gradient Analysis"]
+        A["Gradient Accumulation<br/>Statistics"]
+        A --> B["High-Gradient Regions<br/>Identification"]
     end
     
-    subgraph GeometricAnalysis["Geometric Feature Analysis"]
-        D["Scaling Parameters<br/>s = [s_x, s_y, s_z]"]
-        D --> E["Maximum Scale<br/>s_max = max(s)"]
-        E --> F["Scale Classification<br/>Large: s_max > τ_scale"]
+    subgraph GeometricAnalysis["Geometric Analysis"]
+        C["Scale Parameters<br/>Shape Features"]
+        C --> D["Scale Classification<br/>Threshold Check"]
     end
     
-    subgraph DensificationOps["Densification Operations"]
-        C --> G{"Gradient Threshold<br/>Check"}
-        F --> G
-        G -->|"||g|| > τ_grad ∧ s_max > τ_scale"| H["Split Operation<br/>μ_new = μ ± δ"]
-        G -->|"||g|| > τ_grad ∧ s_max ≤ τ_scale"| I["Clone Operation<br/>μ_new = μ + ε"]
-        H --> J["Update Gaussian Count<br/>N_gaussians ← N + 1"]
-        I --> J
+    subgraph DensificationOps["Densification"]
+        B --> E{"Multi-Criteria<br/>Decision"}
+        D --> E
+        E -->|Large Scale & High Grad| F["Split Operation<br/>Add Detail"]
+        E -->|Small Scale & High Grad| G["Clone Operation<br/>Add Primitives"]
+        F --> H["Update Representation"]
+        G --> H
     end
     
-    subgraph PruningOps["Pruning Operations"]
-        K["Opacity Analysis<br/>α < τ_opacity"]
-        L["Large Scale Detection<br/>s_max > τ_prune"]
-        M["Screen Size Check<br/>radius > max_screen_size"]
-        K --> N["Remove Low Opacity<br/>Gaussians"]
-        L --> N
-        M --> N
-        N --> O["Update Gaussian Count<br/>N_gaussians ← N - k"]
+    subgraph PruningOps["Pruning"]
+        I["Opacity Analysis<br/>Quality Check"]
+        J["Scale Detection<br/>Outlier Filter"]
+        I --> K["Remove Redundancy<br/>Optimize"]
+        J --> K
     end
     
-    subgraph AdaptiveControl["Adaptive Control Strategy"]
-        P["Training Iteration<br/>iter ∈ [0, iter_max]"]
-        P --> Q["Densification Window<br/>[densify_from, densify_until]"]
-        Q --> R["Densification Interval<br/>Every Δ_densify iterations"]
-        R --> S["Opacity Reset<br/>Every Δ_reset iterations"]
+    subgraph AdaptiveControl["Adaptive Control"]
+        L["Training Phase<br/>Iteration Schedule"]
+        L --> M["Densification Window<br/>Dynamic Adjustment"]
+        M --> E
     end
     
-    J --> T["Memory Cleanup<br/>torch.cuda.empty_cache()"]
-    O --> T
-    T --> U["Reset Statistics<br/>grad_accum ← 0, denom ← 0"]
-    
-    S --> G
-    R --> G
+    H --> N["Reset Statistics<br/>Memory Management"]
+    K --> N
     
     classDef normalStyle fill:#FFFFFF,stroke:#999999,stroke-width:2px
     classDef importantStyle fill:#E3F2FD,stroke:#1976D2,stroke-width:2px
     
-    class A,G,H,I importantStyle
-    class B,C,D,E,F,J,K,L,M,N,O,P,Q,R,S,T,U normalStyle
+    class A,E,F,G importantStyle
+    class B,C,D,H,I,J,K,L,M,N normalStyle
